@@ -6,11 +6,11 @@
     <title>Swift Script Hub</title>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;800&display=swap" rel="stylesheet">
     <style>
+        /* --- Global Styles --- */
         body { background-color: #0f0f13; color: #fff; font-family: 'Kanit', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; overflow-x: hidden; }
         
-        /* 🔥 Animated Title (White-Black Gradient) */
-        h1 { 
-            font-size: 2.5em; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 2px; font-weight: 800;
+        /* 🔥 Animated Gradient Text */
+        .gradient-text {
             background: linear-gradient(90deg, #ffffff, #444444, #ffffff);
             background-size: 200% auto;
             color: transparent;
@@ -20,34 +20,77 @@
         }
         @keyframes shine { to { background-position: 200% center; } }
 
-        .container { background: #1e1f24; padding: 30px; border-radius: 15px; box-shadow: 0 0 20px rgba(255, 255, 255, 0.1); max-width: 600px; width: 100%; text-align: center; border: 1px solid #2f3136; position: relative; z-index: 1; }
-        .subtitle { color: #b9bbbe; font-size: 0.9em; margin-bottom: 20px; }
-        .script-img { width: 100%; max-height: 250px; object-fit: cover; border-radius: 10px; margin-bottom: 20px; border: 2px solid #202225; }
-        .code-box { position: relative; background: #2f3136; padding: 15px; border-radius: 8px; text-align: left; margin-bottom: 20px; border: 1px solid #40444b; overflow-x: auto; }
-        pre { margin: 0; color: #a9fdac; font-family: 'Consolas', monospace; font-size: 0.9em; white-space: pre-wrap; word-wrap: break-word; }
-        .btn { background: linear-gradient(45deg, #ffffff, #999999); border: none; padding: 12px 25px; color: #000; border-radius: 25px; font-size: 1em; cursor: pointer; font-weight: bold; transition: 0.3s; width: 100%; display: block; margin-top: 10px; text-decoration: none; }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 255, 255, 0.3); }
-        .warning { color: #ed4245; font-size: 0.8em; margin-top: 15px; border-top: 1px solid #40444b; padding-top: 10px; }
-        .toast { visibility: hidden; min-width: 250px; background-color: #3ba55c; color: #fff; text-align: center; border-radius: 5px; padding: 16px; position: fixed; z-index: 999; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 17px; }
-        .toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
-
-        /* 🍔 Hamburger Menu */
-        .menu-btn { position: fixed; top: 20px; left: 20px; font-size: 30px; cursor: pointer; color: white; z-index: 100; transition: 0.3s; }
-        .menu-btn:hover { color: #aaa; }
+        h1 { font-size: 2.5em; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 2px; font-weight: 800; }
         
-        /* Side Menu */
-        .sidenav { height: 100%; width: 0; position: fixed; z-index: 99; top: 0; left: 0; background-color: #111; overflow-x: hidden; transition: 0.5s; padding-top: 60px; box-shadow: 2px 0 10px rgba(0,0,0,0.5); }
-        .sidenav a { padding: 8px 8px 8px 32px; text-decoration: none; font-size: 18px; color: #818181; display: block; transition: 0.3s; font-family: 'Kanit', sans-serif; }
-        .sidenav a:hover { color: #f1f1f1; }
-        .sidenav .closebtn { position: absolute; top: 0; right: 25px; font-size: 36px; margin-left: 50px; }
-
-        /* Discord Overlay (Modal) */
-        .modal { display: none; position: fixed; z-index: 200; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); align-items: center; justify-content: center; }
-        .modal-content { background-color: #1e1f24; margin: auto; padding: 20px; border: 1px solid #888; width: 90%; max-width: 400px; border-radius: 15px; text-align: center; position: relative; animation: zoomIn 0.3s; }
-        .close-modal { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
-        .discord-img { width: 100px; height: 100px; border-radius: 50%; border: 3px solid #5865F2; margin-bottom: 10px; }
+        /* --- Main Container --- */
+        .container { 
+            background: #1e1f24; padding: 35px; border-radius: 25px; /* เพิ่มความโค้งมน */
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); /* เพิ่มเงาให้ดูมีมิติ */
+            max-width: 600px; width: 100%; text-align: center; border: 1px solid #2f3136; position: relative; z-index: 1; 
+        }
+        .subtitle { color: #b9bbbe; font-size: 0.9em; margin-bottom: 25px; }
         
-        @keyframes zoomIn { from {transform: scale(0.7)} to {transform: scale(1)} }
+        /* --- Script Image & Code --- */
+        .script-img { 
+            width: 100%; max-height: 250px; object-fit: cover; border-radius: 15px; margin-bottom: 25px; 
+            border: 3px solid #2f3136; /* เพิ่มกรอบชัดๆ */
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3); /* เพิ่มเงา */
+        }
+        .script-title { text-align: left; margin-bottom: 15px; font-weight: 600; color: #fff; font-size: 1.1em; }
+        .code-box { 
+            position: relative; background: #2f3136; padding: 20px; border-radius: 15px; /* โค้งมน */
+            text-align: left; margin-bottom: 25px; border: 1px solid #40444b; overflow-x: auto; 
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+        }
+        pre { margin: 0; color: #a9fdac; font-family: 'Consolas', monospace; font-size: 0.95em; white-space: pre-wrap; word-wrap: break-word; }
+        
+        /* --- Buttons --- */
+        .btn { 
+            background: linear-gradient(45deg, #ffffff, #999999); border: none; padding: 15px 30px; color: #000; 
+            border-radius: 30px; /* ปุ่มโค้งมนสุดๆ */
+            font-size: 1.1em; cursor: pointer; font-weight: bold; transition: all 0.3s ease; width: 100%; display: block; margin-top: 10px; text-decoration: none; 
+            box-shadow: 0 5px 15px rgba(255, 255, 255, 0.1);
+        }
+        .btn:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(255, 255, 255, 0.3); }
+        .warning { color: #ed4245; font-size: 0.85em; margin-top: 20px; border-top: 1px solid #40444b; padding-top: 15px; }
+        
+        /* --- Toast Notification (แจ้งเตือนคัดลอก) --- */
+        #toast { 
+            visibility: hidden; /* ซ่อนไว้ก่อน */
+            min-width: 250px; background-color: #3ba55c; color: #fff; text-align: center; border-radius: 10px; padding: 16px; 
+            position: fixed; z-index: 999; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 17px; font-weight: 600;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            opacity: 0; transition: opacity 0.5s, bottom 0.5s;
+        }
+        #toast.show { 
+            visibility: visible; opacity: 1; bottom: 50px; /* เด้งขึ้นมา */
+        }
+
+        /* --- Hamburger Menu --- */
+        .menu-btn { position: fixed; top: 25px; left: 25px; font-size: 32px; cursor: pointer; color: white; z-index: 100; transition: 0.3s; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); }
+        .menu-btn:hover { color: #aaa; transform: scale(1.1); }
+        
+        /* --- Side Navigation --- */
+        .sidenav { height: 100%; width: 0; position: fixed; z-index: 99; top: 0; left: 0; background-color: rgba(17, 17, 17, 0.95); backdrop-filter: blur(10px); overflow-x: hidden; transition: 0.5s; padding-top: 80px; box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
+        .sidenav a { padding: 15px 20px 15px 32px; text-decoration: none; font-size: 20px; color: #818181; display: block; transition: 0.3s; font-family: 'Kanit', sans-serif; font-weight: 600; border-left: 3px solid transparent; }
+        .sidenav a:hover { color: #f1f1f1; background: rgba(255,255,255,0.05); border-left: 3px solid #fff; }
+        .sidenav .closebtn { position: absolute; top: 20px; right: 25px; font-size: 42px; margin-left: 0; }
+
+        /* --- Discord Modal --- */
+        .modal { display: none; position: fixed; z-index: 200; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.85); backdrop-filter: blur(5px); align-items: center; justify-content: center; }
+        .modal-content { background-color: #1e1f24; margin: auto; padding: 30px; border: 1px solid #36393f; width: 90%; max-width: 420px; border-radius: 25px; text-align: center; position: relative; animation: zoomIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 15px 40px rgba(0,0,0,0.5); }
+        .close-modal { color: #aaa; position: absolute; top: 15px; right: 20px; font-size: 32px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .close-modal:hover { color: #fff; }
+        .discord-img { 
+            width: 110px; height: 110px; border-radius: 50%; 
+            border: 4px solid #5865F2; /* ขอบสี Discord */
+            margin-bottom: 15px; box-shadow: 0 5px 15px rgba(88, 101, 242, 0.3);
+            object-fit: cover; background-color: #fff; /* พื้นหลังขาวเผื่อรูป PNG */
+        }
+        .modal-title { font-size: 1.8em; margin: 10px 0 15px; font-weight: 800; }
+        .discord-link-box { background: #2f3136; padding: 12px; border-radius: 10px; margin: 15px 0; color: #a9fdac; font-family: monospace; font-size: 1.1em; border: 1px solid #40444b; }
+        
+        @keyframes zoomIn { from {transform: scale(0.8); opacity: 0;} to {transform: scale(1); opacity: 1;} }
     </style>
 </head>
 <body>
@@ -60,11 +103,11 @@
     </div>
 
     <div class="container">
-        <h1>Swift Script Hub</h1>
+        <h1 class="gradient-text">Swift Script Hub</h1>
         <div class="subtitle">By Zemon Źx For Pai Èx</div>
         
         <img src="{{IMAGE_URL}}" alt="Script Preview" class="script-img">
-        <div style="text-align: left; margin-bottom: 10px; font-weight: bold; color: #fff;">📜 {{SCRIPT_NAME}}</div>
+        <div class="script-title">📜 {{SCRIPT_NAME}}</div>
         
         <div class="code-box">
             <pre id="scriptCode">{{SCRIPT_CODE}}</pre>
@@ -77,33 +120,36 @@
     <div id="discordModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeDiscordModal()">&times;</span>
-            <img src="https://cdn.discordapp.com/attachments/1449112368977281117/1473691141802299475/IMG_0939.png?ex=69972154&is=6995cfd4&hm=679c5437c7c0c66ab27b46309f331225abe0b0ec561993fc6ab58fc17144f34f&" class="discord-img">
-            <h2 style="color: #fff; margin: 10px 0;">Swift Community 🚀</h2>
-            <p style="color: #ccc; font-size: 0.9em;">{{DISCORD_DESC}}</p>
-            <div style="background: #2f3136; padding: 10px; border-radius: 5px; margin: 10px 0; color: #a9fdac; font-family: monospace;">discord.gg/swift-fake-link</div>
-            <button class="btn" onclick="copyDiscord()">{{COPY_LINK_BTN}}</button>
+            <img src="https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a6a49cf127bf92de1e2_icon_clyde_blurple_RGB.png" class="discord-img" alt="Discord Logo">
+            <h2 class="modal-title gradient-text">Swift Hub Community 🚀</h2>
+            <p style="color: #ccc; font-size: 1em; line-height: 1.5;">{{DISCORD_DESC}}</p>
+            <div class="discord-link-box">discord.gg/swift-hub-community</div>
+            <button class="btn" onclick="copyDiscord()" style="background: linear-gradient(45deg, #5865F2, #404EED); color: white;">{{COPY_LINK_BTN}}</button>
         </div>
     </div>
 
-    <div id="toast">✅ Copied!</div>
+    <div id="toast">{{TOAST_MSG}}</div>
 
     <script>
+        // ฟังก์ชันแสดง Toast 2 วินาที
+        function showToast() {
+            var x = document.getElementById("toast");
+            x.className = "show";
+            // ตั้งเวลา 2 วินาที (2000ms) แล้วซ่อน
+            setTimeout(function(){ x.className = x.className.replace("show", ""); }, 2000);
+        }
+
         function copyCode() {
             var codeText = document.getElementById("scriptCode").innerText;
             navigator.clipboard.writeText(codeText).then(() => showToast());
         }
 
         function copyDiscord() {
-            navigator.clipboard.writeText("https://discord.gg/swift-fake-link").then(() => showToast());
+            // แก้ลิ้งค์ Discord จริงตรงนี้
+            navigator.clipboard.writeText("https://discord.gg/swift-hub-community").then(() => showToast());
         }
 
-        function showToast() {
-            var x = document.getElementById("toast");
-            x.className = "show";
-            setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
-        }
-
-        function openNav() { document.getElementById("mySidenav").style.width = "250px"; }
+        function openNav() { document.getElementById("mySidenav").style.width = "280px"; }
         function closeNav() { document.getElementById("mySidenav").style.width = "0"; }
         
         function openDiscordModal() { 
@@ -111,6 +157,14 @@
             document.getElementById("discordModal").style.display = "flex"; 
         }
         function closeDiscordModal() { document.getElementById("discordModal").style.display = "none"; }
+
+        // ปิด Modal เมื่อกดพื้นที่ว่างๆ
+        window.onclick = function(event) {
+            var modal = document.getElementById("discordModal");
+            if (event.target == modal) {
+                closeDiscordModal();
+            }
+        }
     </script>
 </body>
 </html>
