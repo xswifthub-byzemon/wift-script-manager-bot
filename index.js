@@ -4,39 +4,40 @@ const path = require('path');
 const express = require('express');
 require('dotenv').config();
 
-// --- ⚙️ ตั้งค่า (CONFIG) ---
+// --- ⚙️ CONFIG ---
 const TOKEN = process.env.DISCORD_TOKEN;
 const OWNER_ID = process.env.OWNER_ID;
 const PORT = process.env.PORT || 3000;
 
-// โดเมนอัตโนมัติ
+// Domain Logic
 let rawDomain = process.env.PUBLIC_DOMAIN || '';
 rawDomain = rawDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
 const DOMAIN = rawDomain || 'wift-script-manager-bot-production.up.railway.app'; 
 
 const SCRIPT_DB_FILE = './scripts.json';
 const STATUS_DB_FILE = './status.json';
-const PANEL_DB_FILE = './panels.json'; // 📁 ไฟล์ใหม่สำหรับจำ Panel
+const PANEL_DB_FILE = './panels.json'; 
 const DEFAULT_IMG = 'https://cdn.discordapp.com/attachments/1449112368977281117/1473691141802299475/IMG_0939.png'; 
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 const app = express();
 
-// --- 🌐 ระบบเว็บไซต์ & นับยอดวิว ---
+// --- 🌐 WEB SERVER ---
 app.get('/', (req, res) => {
     res.send('<h1 style="color:green; font-family:sans-serif; text-align:center; margin-top:20%;">🤖 Swift Script Hub is Running!</h1>');
 });
 
-app.get('/view/:key', async (req, res) => {
+app.get('/view/:key', (req, res) => {
     const key = req.params.key;
     const lang = req.query.lang || 'th';
     
-    if (!scriptDatabase[key]) return res.status(404).send('<h1 style="color:red; text-align:center;">404 - ไม่พบสคริปต์</h1>');
+    // Check script exist
+    if (!scriptDatabase[key]) return res.status(404).send('<h1 style="color:red; text-align:center;">404 - Not Found</h1>');
 
-    // 👁️ เพิ่มยอดวิว (นับคนดูจริง)
+    // 👁️ View Counting Logic
     if (!scriptDatabase[key].views) scriptDatabase[key].views = 0;
     scriptDatabase[key].views += 1;
-    saveScriptData(); // บันทึกยอดวิวทันที
+    saveScriptData(); // Save DB
 
     const scriptData = scriptDatabase[key];
     const code = scriptData.code;
@@ -54,7 +55,7 @@ app.get('/view/:key', async (req, res) => {
 
     const htmlPath = path.join(__dirname, 'index.html');
     fs.readFile(htmlPath, 'utf8', (err, html) => {
-        if (err) return res.status(500).send('Error loading index.html');
+        if (err) return res.status(500).send('Error loading template');
         
         let finalHtml = html
             .replace('{{IMAGE_URL}}', img)
@@ -65,24 +66,24 @@ app.get('/view/:key', async (req, res) => {
             .replace('{{MENU_CONTACT}}', data.menuContact)
             .replace('{{DISCORD_DESC}}', data.discordDesc)
             .replace('{{COPY_LINK_BTN}}', data.copyLinkBtn)
-            .replace('{{COPIED_TEXT}}', data.copiedText);
+            .replace('{{COPIED_TEXT}}', data.copiedText)
+            .replace('{{VIEWS}}', scriptData.views); // ✅ ส่งยอดวิวไปแสดงผล
 
         res.send(finalHtml);
     });
 });
 
-app.listen(PORT, '0.0.0.0', () => console.log(`🌐 Website & View Counter online on port ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`🌐 Website online on port ${PORT}`));
 
-// --- 📂 ฐานข้อมูล ---
+// --- 📂 DATABASE ---
 let scriptDatabase = {};
 let statusDatabase = {}; 
-let panelDatabase = {}; // ตัวแปรเก็บข้อมูล Panel
+let panelDatabase = {}; 
 let userSelections = new Map(); 
 let activeEditTarget = null, tempStatusName = null; 
 
-// ตัวแปร Panel (จะโหลดจากไฟล์แทนการเริ่มใหม่)
 let activeScriptPanelEN = null, activeScriptPanelTH = null, activeAdminScriptPanel = null;
-let activeStatusPanel = null;
+let activeStatusPanel = null, activeStatusAdminPanel = null;
 
 function loadData() {
     if (fs.existsSync(SCRIPT_DB_FILE)) { try { scriptDatabase = JSON.parse(fs.readFileSync(SCRIPT_DB_FILE, 'utf8')); } catch (e) { scriptDatabase = {}; } }
@@ -95,44 +96,40 @@ async function saveScriptData() { fs.writeFileSync(SCRIPT_DB_FILE, JSON.stringif
 async function saveStatusData() { fs.writeFileSync(STATUS_DB_FILE, JSON.stringify(statusDatabase, null, 4)); await updateStatusDashboard(); }
 async function savePanelData() { fs.writeFileSync(PANEL_DB_FILE, JSON.stringify(panelDatabase, null, 4)); }
 
-// --- 🔥 เริ่มทำงาน ---
+// --- 🔥 COMMANDS ---
 const commands = [
-    new SlashCommandBuilder().setName('admin').setDescription('🔧 จัดการคลังสคริปต์ (Admin Only)'),
-    new SlashCommandBuilder().setName('status-admin').setDescription('🔧 จัดการสถานะสคริปต์ (Admin Only)'),
-    new SlashCommandBuilder().setName('getscript-en').setDescription('🇺🇸 Create Script Panel (English)'),
-    new SlashCommandBuilder().setName('getscript-th').setDescription('🇹🇭 สร้างหน้าต่างรับสคริปต์ (ภาษาไทย)'),
-    new SlashCommandBuilder().setName('status-panel').setDescription('📊 สร้างหน้าสถานะสคริปต์'),
+    new SlashCommandBuilder().setName('admin').setDescription('🔧 Admin Panel'),
+    new SlashCommandBuilder().setName('status-admin').setDescription('🔧 Status Admin Panel'),
+    new SlashCommandBuilder().setName('getscript-en').setDescription('🇺🇸 Script Panel (EN)'),
+    new SlashCommandBuilder().setName('getscript-th').setDescription('🇹🇭 Script Panel (TH)'),
+    new SlashCommandBuilder().setName('status-panel').setDescription('📊 Status Dashboard'),
 ].map(command => command.toJSON());
 
 client.once('ready', async () => {
-    console.log(`น้องปาย Swift Hub พร้อมทำงานแล้วค่ะ! Logged in as ${client.user.tag}`);
+    console.log(`Bot Ready! Logged in as ${client.user.tag}`);
     const rest = new REST({ version: '10' }).setToken(TOKEN);
     try { await rest.put(Routes.applicationCommands(client.user.id), { body: commands }); } catch (error) { console.error(error); }
-
-    // 🔄 กู้คืน Panel เดิม (Recovery System)
+    
+    // Restore Panels
     restorePanel('th', (msg) => activeScriptPanelTH = msg);
     restorePanel('en', (msg) => activeScriptPanelEN = msg);
     restorePanel('admin', (msg) => activeAdminScriptPanel = msg);
     restorePanel('status', (msg) => activeStatusPanel = msg);
 });
 
-// ฟังก์ชั่นช่วยกู้คืน Panel
 async function restorePanel(type, setter) {
     if (panelDatabase[type]) {
         try {
             const channel = await client.channels.fetch(panelDatabase[type].channelId);
             if (channel) {
                 const msg = await channel.messages.fetch(panelDatabase[type].messageId);
-                if (msg) {
-                    setter(msg);
-                    console.log(`✅ Restored ${type} panel.`);
-                }
+                if (msg) setter(msg);
             }
-        } catch (e) { console.log(`⚠️ Could not restore ${type} panel (Message might be deleted).`); }
+        } catch (e) { console.log(`Restoration failed for ${type}`); }
     }
 }
 
-// --- 🎨 ฟังก์ชั่นสร้าง Panel (แยกภาษา 100% + โชว์ยอดวิว) ---
+// --- 🎨 PANELS ---
 async function generateUserPanelPayload(lang) {
     const scriptKeys = Object.keys(scriptDatabase);
     const hasScripts = scriptKeys.length > 0;
@@ -142,26 +139,21 @@ async function generateUserPanelPayload(lang) {
         .setColor(hasScripts ? '#0099ff' : '#808080')
         .setThumbnail(client.user.displayAvatarURL());
     
+    // ❌ ลบยอดวิวออกจากหน้า Panel Discord ตามสั่ง
     if (isEN) {
-        // 🇺🇸 English Layout
         embed.setTitle('📂 Swift Script Hub Service');
         embed.setFooter({ text: 'Powered by Pai ❤️ | Select script & Click button' });
         if (hasScripts) {
-            const list = scriptKeys.map((k, i) => `> **Script ${i + 1}** : ${k}  👁️ \`${scriptDatabase[k].views || 0}\``).join('\n');
-            embed.setDescription(`**Thank you for using Swift Hub!** ❤️\nWe provide high-quality scripts just for you.\n\n⚠️ **Warning:** Using scripts involves risk. Please play responsibly.\n----------------------------------------------------\n**📜 Available Scripts (${scriptKeys.length}):**\n${list}\n\n*Select a script from the dropdown below and click "Get Script Link".*`);
-        } else {
-            embed.setDescription('❌ **Out of Stock**');
-        }
+            const list = scriptKeys.map((k, i) => `> **Script ${i + 1}** : ${k}`).join('\n');
+            embed.setDescription(`**Thank you for using Swift Hub!** ❤️\nWe provide high-quality scripts just for you.\n\n⚠️ **Warning:** Using scripts involves risk. Please play responsibly.\n----------------------------------------------------\n**📜 Available Scripts (${scriptKeys.length}):**\n${list}\n\n*Select a script below and click "Get Script Link".*`);
+        } else { embed.setDescription('❌ **Out of Stock**'); }
     } else {
-        // 🇹🇭 Thai Layout
         embed.setTitle('📂 Swift Script Hub บริการแจกสคริปต์');
         embed.setFooter({ text: 'Powered by Pai ❤️ | เลือกสคริปต์แล้วกดปุ่มรับลิ้งค์' });
         if (hasScripts) {
-            const list = scriptKeys.map((k, i) => `> **สคริปต์ ${i + 1}** : ${k}  👁️ \`${scriptDatabase[k].views || 0}\``).join('\n');
-            embed.setDescription(`**ขอบคุณที่ไว้ใจใช้บริการ Swift Hub นะคะ** ❤️\nเราคัดสรรสคริปต์คุณภาพมาเพื่อคุณโดยเฉพาะ\n\n⚠️ **คำเตือน:** การใช้สคริปต์มีความเสี่ยง โปรดเล่นอย่างมีสติและระมัดระวังด้วยนะคะ\n----------------------------------------------------\n**📜 สคริปต์ที่พร้อมใช้งาน (${scriptKeys.length}):**\n${list}\n\n*เลือกสคริปต์จากเมนูด้านล่าง แล้วกดปุ่ม "รับลิ้งค์สคริปต์" นะคะ*`);
-        } else {
-            embed.setDescription('❌ **คลังว่างเปล่า / ยังไม่มีสคริปต์**');
-        }
+            const list = scriptKeys.map((k, i) => `> **สคริปต์ ${i + 1}** : ${k}`).join('\n');
+            embed.setDescription(`**ขอบคุณที่ไว้ใจใช้บริการ Swift Hub นะคะ** ❤️\nเราคัดสรรสคริปต์คุณภาพมาเพื่อคุณโดยเฉพาะ\n\n⚠️ **คำเตือน:** การใช้สคริปต์มีความเสี่ยง โปรดเล่นอย่างมีสติ\n----------------------------------------------------\n**📜 สคริปต์ที่พร้อมใช้งาน (${scriptKeys.length}):**\n${list}\n\n*เลือกสคริปต์จากเมนูด้านล่าง แล้วกดปุ่ม "รับลิ้งค์สคริปต์" นะคะ*`);
+        } else { embed.setDescription('❌ **คลังว่างเปล่า / ยังไม่มีสคริปต์**'); }
     }
 
     const selectMenu = new StringSelectMenuBuilder()
@@ -174,14 +166,12 @@ async function generateUserPanelPayload(lang) {
             { label: isEN ? '❌ Reset Selection' : '❌ ยกเลิกการเลือก', value: 'reset_selection', emoji: '🔄' },
             ...scriptKeys.map((key, index) => ({ 
                 label: isEN ? `Script ${index + 1}` : `สคริปต์ ${index + 1}`, 
-                description: `${key} (Views: ${scriptDatabase[key].views || 0})`, // โชว์ยอดวิวใน Dropdown ด้วย
+                description: key, 
                 value: key, 
                 emoji: '📜' 
             }))
         ].slice(0, 25));
-    } else {
-        selectMenu.addOptions([{ label: 'Empty', value: 'none' }]);
-    }
+    } else { selectMenu.addOptions([{ label: 'Empty', value: 'none' }]); }
 
     const getButton = new ButtonBuilder()
         .setCustomId(isEN ? 'btn_get_en' : 'btn_get_th')
@@ -193,12 +183,12 @@ async function generateUserPanelPayload(lang) {
 }
 
 async function generateAdminScriptPanel() {
-    const embed = new EmbedBuilder().setColor('#FF0000').setTitle('🔧 Script Admin Control Panel').setDescription(`📊 ในคลังมีทั้งหมด: **${Object.keys(scriptDatabase).length}** สคริปต์`);
+    const embed = new EmbedBuilder().setColor('#FF0000').setTitle('🔧 Script Admin').setDescription(`📊 ในคลังมี: **${Object.keys(scriptDatabase).length}** สคริปต์`);
     const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('btn_add').setLabel('เติมสคริปต์').setStyle(ButtonStyle.Success).setEmoji('➕'),
-        new ButtonBuilder().setCustomId('btn_check').setLabel('เช็คสคริปต์').setStyle(ButtonStyle.Primary).setEmoji('👀'),
-        new ButtonBuilder().setCustomId('btn_edit').setLabel('แก้ไข').setStyle(ButtonStyle.Secondary).setEmoji('✏️'),
-        new ButtonBuilder().setCustomId('btn_delete').setLabel('ลบสคริปต์').setStyle(ButtonStyle.Danger).setEmoji('🗑️')
+        new ButtonBuilder().setCustomId('btn_add').setLabel('เติม').setStyle(ButtonStyle.Success).setEmoji('➕'),
+        new ButtonBuilder().setCustomId('btn_check').setLabel('เช็ค').setStyle(ButtonStyle.Primary).setEmoji('👀'),
+        new ButtonBuilder().setCustomId('btn_edit').setLabel('แก้').setStyle(ButtonStyle.Secondary).setEmoji('✏️'),
+        new ButtonBuilder().setCustomId('btn_delete').setLabel('ลบ').setStyle(ButtonStyle.Danger).setEmoji('🗑️')
     );
     return { embeds: [embed], components: [row] };
 }
@@ -220,57 +210,34 @@ const STATUS_OPTIONS = [
 async function updateStatusDashboard() { if (activeStatusPanel) try { await activeStatusPanel.edit(await generateStatusPanelPayload()); } catch (e) {} }
 async function generateStatusPanelPayload() {
     const keys = Object.keys(statusDatabase);
-    let list = keys.length > 0 ? keys.map(k => `• ${statusDatabase[k].emoji} : **${k}**\n   🇺🇸 ${statusDatabase[k].descEN}\n   🇹🇭 ${statusDatabase[k].descTH}`).join('\n\n') : 'No script status available.';
+    let list = keys.length > 0 ? keys.map(k => `• ${statusDatabase[k].emoji} : **${k}**\n   🇺🇸 ${statusDatabase[k].descEN}\n   🇹🇭 ${statusDatabase[k].descTH}`).join('\n\n') : 'No script status.';
     const embed = new EmbedBuilder().setColor('#2b2d31').setTitle('🕐 Current Status').setDescription(list);
     return { embeds: [embed] };
 }
 
 // --- ⚡ Interactions ---
 client.on('interactionCreate', async (i) => {
-    // 💾 บันทึกตำแหน่ง Panel เมื่อมีการเรียกใช้คำสั่ง
     if (i.isChatInputCommand()) {
         const { commandName } = i;
-        if (commandName === 'getscript-en') {
-            activeScriptPanelEN = await i.reply({ ...(await generateUserPanelPayload('en')), fetchReply: true });
-            panelDatabase['en'] = { channelId: i.channelId, messageId: activeScriptPanelEN.id }; await savePanelData();
-        }
-        if (commandName === 'getscript-th') {
-            activeScriptPanelTH = await i.reply({ ...(await generateUserPanelPayload('th')), fetchReply: true });
-            panelDatabase['th'] = { channelId: i.channelId, messageId: activeScriptPanelTH.id }; await savePanelData();
-        }
-        if (commandName === 'admin' && i.user.id === OWNER_ID) {
-            activeAdminScriptPanel = await i.reply({ ...(await generateAdminScriptPanel()), fetchReply: true });
-            panelDatabase['admin'] = { channelId: i.channelId, messageId: activeAdminScriptPanel.id }; await savePanelData();
-        }
-        if (commandName === 'status-panel' && i.user.id === OWNER_ID) {
-            activeStatusPanel = await i.reply({ ...(await generateStatusPanelPayload()), fetchReply: true });
-            panelDatabase['status'] = { channelId: i.channelId, messageId: activeStatusPanel.id }; await savePanelData();
-        }
-        // ... (Status Admin ไม่ต้องจำก็ได้ เพราะกดใหม่ได้ตลอด)
+        if (commandName === 'getscript-en') { activeScriptPanelEN = await i.reply({ ...(await generateUserPanelPayload('en')), fetchReply: true }); panelDatabase['en'] = { channelId: i.channelId, messageId: activeScriptPanelEN.id }; await savePanelData(); }
+        if (commandName === 'getscript-th') { activeScriptPanelTH = await i.reply({ ...(await generateUserPanelPayload('th')), fetchReply: true }); panelDatabase['th'] = { channelId: i.channelId, messageId: activeScriptPanelTH.id }; await savePanelData(); }
+        if (commandName === 'admin' && i.user.id === OWNER_ID) { activeAdminScriptPanel = await i.reply({ ...(await generateAdminScriptPanel()), fetchReply: true }); panelDatabase['admin'] = { channelId: i.channelId, messageId: activeAdminScriptPanel.id }; await savePanelData(); }
+        if (commandName === 'status-panel' && i.user.id === OWNER_ID) { activeStatusPanel = await i.reply({ ...(await generateStatusPanelPayload()), fetchReply: true }); panelDatabase['status'] = { channelId: i.channelId, messageId: activeStatusPanel.id }; await savePanelData(); }
+        
         if (commandName === 'status-admin' && i.user.id === OWNER_ID) {
             const embed = new EmbedBuilder().setTitle('🔧 Status Admin Panel').setColor('#FF0000');
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('btn_st_add').setLabel('เพิ่มสถานะ').setStyle(ButtonStyle.Success),
-                new ButtonBuilder().setCustomId('btn_st_edit').setLabel('แก้ไขสถานะ').setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder().setCustomId('btn_st_delete').setLabel('ลบสถานะ').setStyle(ButtonStyle.Danger)
-            );
+            const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('btn_st_add').setLabel('เพิ่ม').setStyle(ButtonStyle.Success), new ButtonBuilder().setCustomId('btn_st_edit').setLabel('แก้').setStyle(ButtonStyle.Secondary), new ButtonBuilder().setCustomId('btn_st_delete').setLabel('ลบ').setStyle(ButtonStyle.Danger));
             await i.reply({ embeds: [embed], components: [row], ephemeral: true });
         }
     }
 
-    // Logic การเลือกสคริปต์
     if (i.isStringSelectMenu() && i.customId.startsWith('select_script')) {
         const val = i.values[0];
-        if (val === 'reset_selection') {
-            userSelections.delete(i.user.id);
-            return i.update(await generateUserPanelPayload(i.customId.includes('en') ? 'en' : 'th'));
-        }
+        if (val === 'reset_selection') { userSelections.delete(i.user.id); return i.update(await generateUserPanelPayload(i.customId.includes('en') ? 'en' : 'th')); }
         userSelections.set(i.user.id, val);
-        const isEN = i.customId.includes('en');
-        await i.reply({ content: isEN ? `✅ Selected **${val}**!` : `✅ คุณเลือก **${val}** แล้ว!`, ephemeral: true });
+        await i.reply({ content: i.customId.includes('en') ? `✅ Selected **${val}**!` : `✅ เลือก **${val}** แล้ว!`, ephemeral: true });
     }
 
-    // Logic ปุ่มรับลิ้งค์
     if (i.isButton() && i.customId.startsWith('btn_get')) {
         const name = userSelections.get(i.user.id);
         if (!name || !scriptDatabase[name]) return i.reply({ content: '⚠️ Please select a script first!', ephemeral: true });
@@ -280,76 +247,39 @@ client.on('interactionCreate', async (i) => {
         
         const embed = new EmbedBuilder().setColor('#00FF00')
             .setTitle(isEN ? `🔗 Link Ready: ${name}` : `🔗 ลิ้งค์สคริปต์พร้อมแล้ว: ${name}`)
-            .setDescription(isEN 
-                ? `👇 **Click the button below to view and copy the script.**\n\n*Enjoy using Swift Hub!* 🎮` 
-                : `👇 **คลิกปุ่มด้านล่างเพื่อไปหน้าเว็บไซต์และคัดลอกสคริปต์นะคะ**\n\n*ขอให้สนุกกับการใช้งาน Swift Hub ค่ะ* 🎮`)
+            .setDescription(isEN ? `👇 **Click the button below to view and copy the script.**\n\n*Enjoy using Swift Hub!* 🎮` : `👇 **คลิกปุ่มด้านล่างเพื่อไปหน้าเว็บไซต์และคัดลอกสคริปต์นะคะ**\n\n*ขอให้สนุกกับการใช้งาน Swift Hub ค่ะ* 🎮`)
             .setFooter({ text: 'Swift Hub Service ❤️' });
 
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setLabel(isEN ? 'Open Script Page 🌐' : 'เปิดหน้าสคริปต์ 🌐')
-                .setStyle(ButtonStyle.Link)
-                .setURL(webLink)
-        );
+        const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setLabel(isEN ? 'Open Script Page 🌐' : 'เปิดหน้าสคริปต์ 🌐').setStyle(ButtonStyle.Link).setURL(webLink));
         await i.reply({ embeds: [embed], components: [row], ephemeral: true });
     }
 
-    // Admin Interactions (Owner Only)
+    // Owner Functions (Add/Edit/Delete)
     if (i.user.id !== OWNER_ID) return;
 
     if (i.customId === 'btn_add') {
         const m = new ModalBuilder().setCustomId('modal_add').setTitle('เติมสคริปต์ใหม่');
-        m.addComponents(
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_name').setLabel("ชื่อสคริปต์").setStyle(TextInputStyle.Short).setRequired(true)),
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_img').setLabel("ลิ้งค์รูปภาพ").setStyle(TextInputStyle.Short).setRequired(false)),
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_code').setLabel("โค้ดสคริปต์").setStyle(TextInputStyle.Paragraph).setRequired(true))
-        );
+        m.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_name').setLabel("ชื่อ").setStyle(TextInputStyle.Short)), new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_img').setLabel("รูป").setStyle(TextInputStyle.Short).setRequired(false)), new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_code').setLabel("โค้ด").setStyle(TextInputStyle.Paragraph)));
         await i.showModal(m);
     }
-
     if (i.customId === 'modal_add' && i.isModalSubmit()) {
         const name = i.fields.getTextInputValue('inp_name');
-        // เพิ่ม views: 0 เมื่อสร้างสคริปต์ใหม่
-        scriptDatabase[name] = { 
-            code: i.fields.getTextInputValue('inp_code'), 
-            image: i.fields.getTextInputValue('inp_img') || DEFAULT_IMG,
-            views: 0 
-        };
-        await saveScriptData();
-        await i.reply({ content: `✅ เพิ่มสคริปต์ **${name}** เรียบร้อย!`, ephemeral: true });
+        scriptDatabase[name] = { code: i.fields.getTextInputValue('inp_code'), image: i.fields.getTextInputValue('inp_img') || DEFAULT_IMG, views: 0 };
+        await saveScriptData(); await i.reply({ content: `✅ เพิ่ม **${name}** แล้ว!`, ephemeral: true });
     }
-
-    // (ส่วนจัดการ Status ยังคงเดิม)
-    if (i.customId === 'btn_st_add') {
-        const m = new ModalBuilder().setCustomId('modal_st_name').setTitle('เพิ่มสถานะสคริปต์');
-        m.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_st_name').setLabel("ชื่อสคริปต์").setStyle(TextInputStyle.Short).setRequired(true)));
-        await i.showModal(m);
-    }
-    if (i.customId === 'modal_st_name' && i.isModalSubmit()) {
-        tempStatusName = i.fields.getTextInputValue('inp_st_name');
-        const row = new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('menu_st_select_status').setPlaceholder('เลือกสถานะ...').addOptions(STATUS_OPTIONS));
-        await i.reply({ content: `เลือกสถานะสำหรับ **${tempStatusName}**:`, components: [row], ephemeral: true });
-    }
-    if (i.customId === 'menu_st_select_status' && i.isStringSelectMenu()) {
-        const s = STATUS_OPTIONS.find(o => o.value === i.values[0]);
-        if (tempStatusName && s) {
-            statusDatabase[tempStatusName] = { emoji: s.emoji, descTH: s.descTH, descEN: s.descEN };
-            await saveStatusData();
-            await i.reply({ content: `✅ เพิ่มสถานะของ **${tempStatusName}** เรียบร้อย!`, ephemeral: true });
-        }
-    }
+    
+    // (ส่วนจัดการอื่นๆ เหมือนเดิม)
     if (i.customId === 'btn_delete') {
         const opts = Object.keys(scriptDatabase).map(k => ({ label: k, value: k })).slice(0, 25);
-        if (!opts.length) return i.reply({ content: 'คลังว่างเปล่า!', ephemeral: true });
-        const row = new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('menu_delete').setPlaceholder('เลือกตัวที่จะลบ...').addOptions(opts));
-        await i.reply({ content: 'ต้องการลบสคริปต์ไหนคะ:', components: [row], ephemeral: true });
+        if (!opts.length) return i.reply({ content: 'Empty', ephemeral: true });
+        const row = new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('menu_delete').setPlaceholder('Select...').addOptions(opts));
+        await i.reply({ content: 'Delete:', components: [row], ephemeral: true });
     }
-    if (i.customId === 'menu_delete' && i.isStringSelectMenu()) {
-        const name = i.values[0];
-        delete scriptDatabase[name];
-        await saveScriptData();
-        await i.reply({ content: `🗑️ ลบ **${name}** เรียบร้อย!`, ephemeral: true });
-    }
+    if (i.customId === 'menu_delete') { delete scriptDatabase[i.values[0]]; await saveScriptData(); await i.reply({ content: 'Deleted', ephemeral: true }); }
+    
+    if (i.customId === 'btn_st_add') { const m = new ModalBuilder().setCustomId('modal_st').setTitle('Add Status'); m.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_st').setLabel("Name").setStyle(TextInputStyle.Short))); await i.showModal(m); }
+    if (i.customId === 'modal_st') { tempStatusName = i.fields.getTextInputValue('inp_st'); const r = new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('menu_st_sel').addOptions(STATUS_OPTIONS)); await i.reply({ content: `Status for ${tempStatusName}:`, components: [r], ephemeral: true }); }
+    if (i.customId === 'menu_st_sel') { const s = STATUS_OPTIONS.find(o=>o.value===i.values[0]); statusDatabase[tempStatusName] = { emoji: s.emoji, descTH: s.descTH, descEN: s.descEN }; await saveStatusData(); await i.reply({ content: 'Saved', ephemeral: true }); }
 });
 
 client.login(TOKEN);
