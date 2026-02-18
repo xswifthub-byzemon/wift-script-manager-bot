@@ -154,7 +154,30 @@
         }
         .close-modal:hover { transform: scale(1.2); color: #ed4245; }
 
-        .discord-img { width: 120px; height: 120px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.1); margin-bottom: 15px; object-fit: cover; box-shadow: 0 0 20px rgba(88, 101, 242, 0.4); }
+        /* 🔥🔥🔥 แก้ไขส่วนรูปภาพ Discord และเพิ่ม Animation ขอบกระพริบ 🔥🔥🔥 */
+        
+        /* 1. สร้าง Keyframes สำหรับการกระพริบสลับสี ขาว-ดำ แบบชัดๆ */
+        @keyframes borderBlink {
+            0%, 49% { border-color: #ffffff; } /* สีขาว */
+            50%, 100% { border-color: #000000; } /* สีดำ */
+        }
+
+        /* 2. แก้ไข CSS ของรูปภาพ Discord */
+        .discord-img { 
+            width: 100%; /* ความกว้างเต็ม Modal */
+            height: 180px; /* กำหนดความสูงให้เป็น Banner สี่เหลี่ยมผืนผ้า */
+            object-fit: cover; /* ให้รูปเต็มกรอบโดยไม่เสียสัดส่วน */
+            border-radius: 15px; /* ขอบมนนิดๆ เหมือนรูปหลัก */
+            margin-bottom: 15px; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+
+            /* ตั้งค่าขอบกระพริบ */
+            border-width: 4px;
+            border-style: solid;
+            border-color: #ffffff; /* สีเริ่มต้น */
+            animation: borderBlink 0.8s step-end infinite; /* กระพริบสลับสีทุก 0.8 วินาที แบบชัดๆ (step-end) */
+        }
+        /* 🔥🔥🔥 สิ้นสุดการแก้ไข 🔥🔥🔥 */
         
         .marquee-container { width: 100%; overflow: hidden; white-space: nowrap; margin: 20px 0; background: rgba(0,0,0,0.3); padding: 5px 0; border-radius: 5px; }
         .marquee-text { display: inline-block; padding-left: 100%; animation: marquee 12s linear infinite; color: #ccc; font-size: 0.95em; }
@@ -201,7 +224,7 @@
         <div class="modal-content">
             <span class="close-modal" onclick="closeDiscordModal()">⬅️</span>
             
-            <img src="https://cdn.discordapp.com/attachments/1449112368977281117/1473691141802299475/IMG_0939.png?ex=69972154&is=6995cfd4&hm=679c5437c7c0c66ab27b46309f331225abe0b0ec561993fc6ab58fc17144f34f&" class="discord-img">
+            <img src="https://cdn.discordapp.com/attachments/1449112368977281117/1473746087725633647/178105ade260f76f3ce2841dfa028d97.jpg?ex=69975480&is=69960300&hm=63f14dfad7000b0cd9374b0e52e501552e06586e57f539495b9eb71104bae9d9&" class="discord-img">
             
             <h2 class="shine-text" style="font-size: 1.6em; margin: 10px 0;">Swift Hub Community 🚀</h2>
             
