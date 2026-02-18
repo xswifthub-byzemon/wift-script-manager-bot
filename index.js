@@ -75,7 +75,7 @@ app.listen(PORT, '0.0.0.0', () => console.log(`🌐 Website online on port ${POR
 let scriptDatabase = {};
 let statusDatabase = {}; 
 let panelDatabase = {}; 
-let userSelections = new Map(); 
+let userSelections = new Map(); // เก็บค่าแยกกันด้วย key: userId_lang
 let activeEditTarget = null, tempStatusName = null; 
 
 let activeScriptPanelEN = null, activeScriptPanelTH = null, activeAdminScriptPanel = null;
@@ -219,13 +219,16 @@ async function generateStatusPanelPayload() {
     const keys = Object.keys(statusDatabase);
     const now = new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok', hour12: true, dateStyle: 'short', timeStyle: 'short' });
     
-    // รายชื่อสคริปต์พร้อมสถานะ
+    // รายชื่อสคริปต์พร้อมสถานะ (Layout รูปที่ 2)
     let list = 'No script status available.';
     if (keys.length > 0) {
-        list = keys.map(k => `• ${statusDatabase[k].emoji} : **${k}**`).join('\n');
+        list = keys.map(k => {
+            const s = statusDatabase[k];
+            return `• ${s.emoji} : **${k}**\n   🇺🇸 ${s.descEN}\n   🇹🇭 ${s.descTH}`;
+        }).join('\n\n');
     }
 
-    // Legend (คำอธิบาย)
+    // Legend (คำอธิบาย) (Layout รูปที่ 3)
     const legend = `
 🟢 Undetected - ใช้งานได้ปกติ
 🟡 Risky - มีโอกาสโดนแบน
@@ -267,26 +270,29 @@ client.on('interactionCreate', async (i) => {
         } else if (['admin', 'status-panel', 'web-stats', 'status-admin'].includes(commandName)) { return i.reply({ content: '🚫 Admin only!', ephemeral: true }); }
     }
 
-    // User Select Script
+    // User Select Script (แยก Panel TH/EN)
     if (i.isStringSelectMenu() && i.customId.startsWith('select_script')) {
+        const lang = i.customId.includes('en') ? 'en' : 'th';
+        const storageKey = `${i.user.id}_${lang}`; // แยก Key ตามภาษา
         const val = i.values[0];
+
         if (val === 'reset_selection') {
-            userSelections.delete(i.user.id);
-            return i.update(await generateUserPanelPayload(i.customId.includes('en') ? 'en' : 'th'));
+            userSelections.delete(storageKey);
+            return i.update(await generateUserPanelPayload(lang));
         }
-        userSelections.set(i.user.id, val);
-        const isEN = i.customId.includes('en');
-        await i.reply({ content: isEN ? `✅ Selected **${val}**!` : `✅ เลือก **${val}** แล้ว!`, ephemeral: true });
+        userSelections.set(storageKey, val);
+        await i.reply({ content: lang === 'en' ? `✅ Selected **${val}**!` : `✅ เลือก **${val}** แล้ว!`, ephemeral: true });
     }
 
-    // User Get Button (⚠️ ระบบป้องกันกดปุ่มเปล่า)
+    // User Get Button (⚠️ ระบบป้องกันกดปุ่มเปล่า + แยก Panel)
     if (i.isButton() && i.customId.startsWith('btn_get')) {
-        const name = userSelections.get(i.user.id);
-        const isEN = i.customId.includes('en');
+        const lang = i.customId.includes('en') ? 'en' : 'th';
+        const storageKey = `${i.user.id}_${lang}`;
+        const name = userSelections.get(storageKey);
 
-        // ถ้ายังไม่เลือกสคริปต์
+        // ถ้ายังไม่เลือกสคริปต์ในภาษานั้นๆ
         if (!name || !scriptDatabase[name]) {
-            const warningMsg = isEN 
+            const warningMsg = lang === 'en'
                 ? '⚠️ **Please select a script from the menu first!**' 
                 : '⚠️ **กรุณาเลือกสคริปต์จากเมนูด้านบนก่อนกดปุ่มรับสคริปต์นะคะ!**';
             
@@ -296,13 +302,13 @@ client.on('interactionCreate', async (i) => {
             return; 
         }
         
-        const webLink = `https://${DOMAIN}/view/${encodeURIComponent(name)}?lang=${isEN ? 'en' : 'th'}`;
+        const webLink = `https://${DOMAIN}/view/${encodeURIComponent(name)}?lang=${lang}`;
         const embed = new EmbedBuilder().setColor('#00FF00')
-            .setTitle(isEN ? `🔗 Link Ready: ${name}` : `🔗 ลิ้งค์สคริปต์พร้อมแล้ว: ${name}`)
-            .setDescription(isEN ? `👇 **Click the button below to view and copy the script.**\n\n*Enjoy using Swift Hub!* 🎮` : `👇 **คลิกปุ่มด้านล่างเพื่อไปหน้าเว็บไซต์และคัดลอกสคริปต์นะคะ**\n\n*ขอให้สนุกกับการใช้งาน Swift Hub ค่ะ* 🎮`)
+            .setTitle(lang === 'en' ? `🔗 Link Ready: ${name}` : `🔗 ลิ้งค์สคริปต์พร้อมแล้ว: ${name}`)
+            .setDescription(lang === 'en' ? `👇 **Click the button below to view and copy the script.**\n\n*Enjoy using Swift Hub!* 🎮` : `👇 **คลิกปุ่มด้านล่างเพื่อไปหน้าเว็บไซต์และคัดลอกสคริปต์นะคะ**\n\n*ขอให้สนุกกับการใช้งาน Swift Hub ค่ะ* 🎮`)
             .setFooter({ text: 'Swift Hub Service ❤️' });
 
-        const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setLabel(isEN ? 'Open Script Page 🌐' : 'เปิดหน้าสคริปต์ 🌐').setStyle(ButtonStyle.Link).setURL(webLink));
+        const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setLabel(lang === 'en' ? 'Open Script Page 🌐' : 'เปิดหน้าสคริปต์ 🌐').setStyle(ButtonStyle.Link).setURL(webLink));
         await i.reply({ embeds: [embed], components: [row], ephemeral: true });
     }
 
