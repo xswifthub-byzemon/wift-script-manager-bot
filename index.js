@@ -4,70 +4,63 @@ const path = require('path');
 const express = require('express');
 require('dotenv').config();
 
-// --- ⚙️ CONFIG (ฉบับอัจฉริยะ) ---
+// --- ⚙️ CONFIG ---
 const TOKEN = process.env.DISCORD_TOKEN;
 const OWNER_ID = process.env.OWNER_ID;
 const PORT = process.env.PORT || 3000;
 
-// 🧠 ระบบจัดการโดเมน: ตัด https:// ออกอัตโนมัติ และแก้คำผิด WIFT/SWIFT ให้ (ถ้าจำเป็น)
 let rawDomain = process.env.PUBLIC_DOMAIN || '';
-// ลบ https://, http:// และ / ตัวท้ายออก
 rawDomain = rawDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
-// ถ้าไม่มีค่า ให้ใช้ค่า default (ต้องแก้ให้ตรงกับชื่อโปรเจกต์จริงใน Railway)
 const DOMAIN = rawDomain || 'wift-script-manager-bot-production.up.railway.app'; 
 
 const SCRIPT_DB_FILE = './scripts.json';
 const STATUS_DB_FILE = './status.json';
 const DEFAULT_IMG = 'https://media.discordapp.net/attachments/123456789/placeholder.png'; 
 
-// --- 🤖 CLIENT ---
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
-
-// --- 🌐 WEB SERVER ---
 const app = express();
 
-// Route: หน้าแรก (Check Status)
 app.get('/', (req, res) => {
     res.send('<h1 style="color:green; font-family:sans-serif; text-align:center; margin-top:20%;">🤖 Bot & Website is Running!</h1>');
 });
 
-// Route: ดูสคริปต์ (อ่านจากไฟล์ index.html ใน GitHub)
+// Route: ดูสคริปต์
 app.get('/view/:key', (req, res) => {
     const key = req.params.key;
     const lang = req.query.lang || 'th';
     const scriptData = scriptDatabase[key];
 
-    if (!scriptData) return res.status(404).send('<h1 style="color:red; text-align:center;">404 - Script Not Found / ไม่พบสคริปต์</h1>');
+    if (!scriptData) return res.status(404).send('<h1 style="color:red; text-align:center;">404 - Not Found</h1>');
 
     const code = typeof scriptData === 'string' ? scriptData : scriptData.code;
     const img = (typeof scriptData === 'object' && scriptData.image) ? scriptData.image : DEFAULT_IMG;
 
+    // 🌍 ภาษา (Localization)
     const isEN = lang === 'en';
-    const copyBtn = isEN ? 'COPY SCRIPT' : 'คัดลอกสคริปต์';
-    const warning = isEN ? '⚠️ Use at your own risk. Play safe!' : '⚠️ การใช้งานมีความเสี่ยง โปรดเล่นอย่างระมัดระวัง';
+    const data = {
+        copyBtn: isEN ? 'COPY SCRIPT' : 'คัดลอกสคริปต์',
+        warning: isEN ? '⚠️ Use at your own risk. Play safe!' : '⚠️ การใช้งานมีความเสี่ยง โปรดเล่นอย่างระมัดระวัง',
+        menuContact: isEN ? 'Contact Admin / Staff' : 'ติดต่อแอดมินและทีมงาน',
+        discordDesc: isEN ? 'Join our community for updates and support! 🎮' : 'เข้ามาร่วมพูดคุย อัปเดตข่าวสาร และแจ้งปัญหาได้ที่นี่เลยครับ! 🎮',
+        copyLinkBtn: isEN ? 'Copy Invite Link 🔗' : 'คัดลอกลิ้งค์ดิสคอร์ด 🔗'
+    };
 
-    // 📂 อ่านไฟล์ index.html ที่ซีม่อนสร้างไว้ใน GitHub
     const htmlPath = path.join(__dirname, 'index.html');
-    
-    // ถ้าหาไฟล์ index.html ไม่เจอ ให้สร้างหน้าเว็บสำรอง (Backup)
-    if (!fs.existsSync(htmlPath)) {
-        return res.send(`
-            <html><body style="background:#111;color:#fff;text-align:center;padding:50px;font-family:sans-serif;">
-            <h1>⚠️ ไม่พบไฟล์ index.html</h1>
-            <p>กรุณาสร้างไฟล์ index.html ใน GitHub ด้วยนะคะ</p>
-            <textarea style="width:80%;height:300px;background:#222;color:#0f0;border:none;padding:10px;">${code}</textarea>
-            </body></html>
-        `);
-    }
+    if (!fs.existsSync(htmlPath)) return res.send('Error: Missing index.html');
 
     fs.readFile(htmlPath, 'utf8', (err, html) => {
         if (err) return res.status(500).send('Error loading template');
+        
         let finalHtml = html
             .replace('{{IMAGE_URL}}', img)
             .replace('{{SCRIPT_NAME}}', key)
             .replace('{{SCRIPT_CODE}}', code)
-            .replace('{{COPY_BTN}}', copyBtn)
-            .replace('{{WARNING_TEXT}}', warning);
+            .replace('{{COPY_BTN}}', data.copyBtn)
+            .replace('{{WARNING_TEXT}}', data.warning)
+            .replace('{{MENU_CONTACT}}', data.menuContact)
+            .replace('{{DISCORD_DESC}}', data.discordDesc)
+            .replace('{{COPY_LINK_BTN}}', data.copyLinkBtn);
+
         res.send(finalHtml);
     });
 });
@@ -89,16 +82,9 @@ function loadData() {
 }
 loadData();
 
-async function saveScriptData() {
-    fs.writeFileSync(SCRIPT_DB_FILE, JSON.stringify(scriptDatabase, null, 4));
-    await updateAllScriptDashboards(); 
-}
-async function saveStatusData() {
-    fs.writeFileSync(STATUS_DB_FILE, JSON.stringify(statusDatabase, null, 4));
-    await updateStatusDashboard();
-}
+async function saveScriptData() { fs.writeFileSync(SCRIPT_DB_FILE, JSON.stringify(scriptDatabase, null, 4)); await updateAllScriptDashboards(); }
+async function saveStatusData() { fs.writeFileSync(STATUS_DB_FILE, JSON.stringify(statusDatabase, null, 4)); await updateStatusDashboard(); }
 
-// --- 🔥 COMMANDS ---
 const commands = [
     new SlashCommandBuilder().setName('admin').setDescription('🔧 Script Admin Panel'),
     new SlashCommandBuilder().setName('status-admin').setDescription('🔧 Status Admin Panel'),
@@ -108,12 +94,12 @@ const commands = [
 ].map(command => command.toJSON());
 
 client.once('ready', async () => {
-    console.log(`น้องปาย Logged in as ${client.user.tag}`);
+    console.log(`Log in as ${client.user.tag}`);
     const rest = new REST({ version: '10' }).setToken(TOKEN);
     try { await rest.put(Routes.applicationCommands(client.user.id), { body: commands }); } catch (error) { console.error(error); }
 });
 
-// --- HELPER FUNCTIONS ---
+// Helper Functions
 async function generateUserPanelPayload(lang) {
     const scriptKeys = Object.keys(scriptDatabase);
     const hasScripts = scriptKeys.length > 0;
@@ -139,9 +125,7 @@ async function generateUserPanelPayload(lang) {
             { label: isEN ? '❌ Reset Selection' : '❌ ยกเลิกการเลือก', value: 'reset_selection', emoji: '🔄' },
             ...scriptKeys.map((key, index) => ({ label: isEN ? `Script ${index + 1}` : `สคริปต์ ${index + 1}`, description: key.substring(0, 100), value: key, emoji: '📜' }))
         ].slice(0, 25));
-    } else {
-        selectMenu.addOptions([{ label: 'Empty', value: 'none' }]);
-    }
+    } else { selectMenu.addOptions([{ label: 'Empty', value: 'none' }]); }
 
     const getButton = new ButtonBuilder().setCustomId(isEN ? 'btn_get_en' : 'btn_get_th').setLabel(isEN ? 'Get Script Link 🔗' : 'รับลิ้งค์สคริปต์ 🔗').setStyle(ButtonStyle.Success).setDisabled(!hasScripts);
     return { embeds: [embed], components: [new ActionRowBuilder().addComponents(selectMenu), new ActionRowBuilder().addComponents(getButton)] };
@@ -214,17 +198,9 @@ client.on('interactionCreate', async (interaction) => {
     if ((interaction.customId === 'btn_get_en' || interaction.customId === 'btn_get_th') && interaction.isButton()) {
         const name = userSelections.get(interaction.user.id);
         if (!name || !scriptDatabase[name]) return interaction.reply({ content: '⚠️ Please select a script first!', ephemeral: true });
-        
         const isEN = interaction.customId.includes('_en');
-        // ใช้ DOMAIN ที่ผ่านการกรองแล้ว
         const webLink = `https://${DOMAIN}/view/${encodeURIComponent(name)}?lang=${isEN ? 'en' : 'th'}`;
-
-        const embed = new EmbedBuilder().setColor('#00FF00')
-            .setTitle(isEN ? `🔗 Script Ready: ${name}` : `🔗 สคริปต์พร้อมแล้ว: ${name}`)
-            .setDescription(isEN ? `Click the link below to view/copy script.` : `คลิกลิ้งค์ด้านล่างเพื่อดูและคัดลอกสคริปต์ค่ะ`)
-            .addFields({ name: isEN ? 'Web Link:' : 'ลิ้งค์หน้าเว็บ:', value: `[👉 Click Here / กดที่นี่](${webLink})` })
-            .setFooter({ text: 'Swift Hub', iconURL: client.user.displayAvatarURL() });
-
+        const embed = new EmbedBuilder().setColor('#00FF00').setTitle(isEN ? `🔗 Script Ready: ${name}` : `🔗 สคริปต์พร้อมแล้ว: ${name}`).setDescription(isEN ? `Click the link below to view/copy script.` : `คลิกลิ้งค์ด้านล่างเพื่อดูและคัดลอกสคริปต์ค่ะ`).addFields({ name: isEN ? 'Web Link:' : 'ลิ้งค์หน้าเว็บ:', value: `[👉 Click Here / กดที่นี่](${webLink})` }).setFooter({ text: 'Swift Hub', iconURL: client.user.displayAvatarURL() });
         const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setLabel(isEN ? 'Open Link' : 'เปิดหน้าสคริปต์').setStyle(ButtonStyle.Link).setURL(webLink).setEmoji('🌐'));
         await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
     }
