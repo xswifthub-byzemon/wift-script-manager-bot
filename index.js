@@ -217,14 +217,28 @@ async function updateStatusDashboard() { if (activeStatusPanel) try { await acti
 
 async function generateStatusPanelPayload() {
     const keys = Object.keys(statusDatabase);
+    const now = new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok', hour12: true, dateStyle: 'short', timeStyle: 'short' });
+    
+    // รายชื่อสคริปต์พร้อมสถานะ
     let list = 'No script status available.';
     if (keys.length > 0) {
-        list = keys.map(k => {
-            const s = statusDatabase[k];
-            return `• ${s.emoji} : **${k}**\n   🇺🇸 ${s.descEN}\n   🇹🇭 ${s.descTH}`;
-        }).join('\n\n');
+        list = keys.map(k => `• ${statusDatabase[k].emoji} : **${k}**`).join('\n');
     }
-    const embed = new EmbedBuilder().setColor('#2b2d31').setTitle('🕐 Current Status').setDescription(list).setFooter({text: 'Swift Hub Status System'});
+
+    // Legend (คำอธิบาย) ตามรูปที่ 3
+    const legend = `
+🟢 Undetected - ใช้งานได้ปกติ
+🟡 Risky - มีโอกาสโดนแบน
+🟠 Updating... - กำลังอัปเดต
+🔴 Detected (Wait new update) - โดนตรวจจับ (รออัปเดต)
+⚫ Discontinued - เลิกทำแล้ว (ถ้าหากกระแสเกมนั้นๆ กลับมาดี อาจกลับไปทำ)`;
+
+    const embed = new EmbedBuilder()
+        .setColor('#2b2d31')
+        .setTitle('🕐 Current Status')
+        .setDescription(`**${now} (GMT+07)**\n\n⏲️ **Script Working 24/7**\n\n${list}\n\n━━━━━━━━━━━━━━━━━━━━\n${legend}`)
+        .setFooter({text: 'Swift Hub Status System'});
+        
     return { embeds: [embed] };
 }
 
@@ -265,18 +279,20 @@ client.on('interactionCreate', async (i) => {
         await i.reply({ content: isEN ? `✅ Selected **${val}**!` : `✅ เลือก **${val}** แล้ว!`, ephemeral: true });
     }
 
-    // User Get Button (Validation Logic ✅)
+    // User Get Button (⚠️ ระบบป้องกันกดปุ่มเปล่า)
     if (i.isButton() && i.customId.startsWith('btn_get')) {
         const name = userSelections.get(i.user.id);
         const isEN = i.customId.includes('en');
 
-        // ถ้าไม่ได้เลือกสคริปต์ ให้แจ้งเตือนและลบเองใน 5 วิ
+        // ถ้ายังไม่เลือกสคริปต์
         if (!name || !scriptDatabase[name]) {
             const warningMsg = isEN 
                 ? '⚠️ **Please select a script from the menu first!**' 
                 : '⚠️ **กรุณาเลือกสคริปต์จากเมนูด้านบนก่อนกดปุ่มรับสคริปต์นะคะ!**';
+            
+            // ส่งข้อความเตือนและลบอัตโนมัติใน 5 วินาที
             const msg = await i.reply({ content: warningMsg, ephemeral: true });
-            setTimeout(() => { i.deleteReply().catch(()=>{}) }, 5000); // ลบข้อความอัตโนมัติ
+            setTimeout(() => { i.deleteReply().catch(()=>{}) }, 5000); 
             return; 
         }
         
@@ -348,25 +364,35 @@ client.on('interactionCreate', async (i) => {
         delete scriptDatabase[i.values[0]]; await saveScriptData(); await i.reply({ content: `🗑️ ลบ **${i.values[0]}** แล้ว!`, ephemeral: true });
     }
 
-    // --- STATUS ADMIN LOGIC ---
-    // Add Status
+    // --- STATUS ADMIN LOGIC (New & Improved) ---
+    
+    // ➕ Add Status (ใช้ Dropdown แทนการพิมพ์ชื่อ)
     if (i.customId === 'btn_st_add') {
-        const m = new ModalBuilder().setCustomId('modal_st').setTitle('เพิ่มสถานะ');
-        m.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_st').setLabel("ชื่อสคริปต์").setStyle(TextInputStyle.Short)));
-        await i.showModal(m);
+        const scriptNames = Object.keys(scriptDatabase);
+        if (scriptNames.length === 0) return i.reply({ content: '❌ ยังไม่มีสคริปต์ในคลังให้เพิ่มสถานะค่ะ', ephemeral: true });
+        
+        const row = new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId('menu_st_add_name')
+                .setPlaceholder('เลือกสคริปต์ที่จะเพิ่มสถานะ...')
+                .addOptions(scriptNames.map(k => ({ label: k, value: k })).slice(0, 25))
+        );
+        await i.reply({ content: '📝 เลือกสคริปต์ที่ต้องการตั้งสถานะ:', components: [row], ephemeral: true });
     }
-    if (i.customId === 'modal_st') {
-        tempStatusName = i.fields.getTextInputValue('inp_st');
-        const r = new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('menu_st_sel').addOptions(STATUS_OPTIONS));
-        await i.reply({ content: `เลือกสถานะสำหรับ **${tempStatusName}**:`, components: [r], ephemeral: true });
+
+    if (i.customId === 'menu_st_add_name') {
+        tempStatusName = i.values[0];
+        const row = new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('menu_st_sel').setPlaceholder('เลือกสถานะ...').addOptions(STATUS_OPTIONS));
+        await i.update({ content: `กำลังตั้งสถานะให้: **${tempStatusName}**\n👇 เลือกสถานะด้านล่าง:`, components: [row] });
     }
+
     if (i.customId === 'menu_st_sel') {
         const s = STATUS_OPTIONS.find(o=>o.value===i.values[0]);
         statusDatabase[tempStatusName] = { emoji: s.emoji, descTH: s.descTH, descEN: s.descEN };
-        await saveStatusData(); await i.reply({ content: '✅ บันทึกสถานะแล้ว', ephemeral: true });
+        await saveStatusData(); await i.update({ content: `✅ บันทึกสถานะ **${tempStatusName}** เป็น ${s.emoji} เรียบร้อย!`, components: [] });
     }
 
-    // Edit Status (Feature Requested ✅)
+    // ✏️ Edit Status (ใช้ Dropdown)
     if (i.customId === 'btn_st_edit') {
         const keys = Object.keys(statusDatabase);
         if (!keys.length) return i.reply({ content: '❌ ยังไม่มีสถานะสคริปต์ให้แก้ไข', ephemeral: true });
@@ -375,17 +401,11 @@ client.on('interactionCreate', async (i) => {
     }
     if (i.customId === 'menu_st_edit_key') {
         tempStatusName = i.values[0];
-        const row = new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('menu_st_edit_val').setPlaceholder('เลือกสถานะใหม่...').addOptions(STATUS_OPTIONS));
+        const row = new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('menu_st_sel').setPlaceholder('เลือกสถานะใหม่...').addOptions(STATUS_OPTIONS));
         await i.update({ content: `กำลังแก้ไขสถานะของ: **${tempStatusName}**\n👇 เลือกสถานะใหม่ด้านล่าง:`, components: [row] });
     }
-    if (i.customId === 'menu_st_edit_val') {
-        const s = STATUS_OPTIONS.find(o=>o.value===i.values[0]);
-        statusDatabase[tempStatusName] = { emoji: s.emoji, descTH: s.descTH, descEN: s.descEN };
-        await saveStatusData();
-        await i.update({ content: `✨ อัปเดตสถานะ **${tempStatusName}** เป็น ${s.emoji} เรียบร้อย!`, components: [] });
-    }
 
-    // Delete Status
+    // 🗑️ Delete Status
     if (i.customId === 'btn_st_delete') {
         const keys = Object.keys(statusDatabase);
         if (!keys.length) return i.reply({ content: '❌ ว่างเปล่า', ephemeral: true });
@@ -393,7 +413,7 @@ client.on('interactionCreate', async (i) => {
         await i.reply({ content: '🗑️ เลือกสถานะที่จะลบ:', components: [row], ephemeral: true });
     }
     if (i.customId === 'menu_st_del') {
-        delete statusDatabase[i.values[0]]; await saveStatusData(); await i.reply({ content: '🗑️ ลบเรียบร้อย', ephemeral: true });
+        delete statusDatabase[i.values[0]]; await saveStatusData(); await i.reply({ content: '🗑️ ลบสถานะเรียบร้อย', ephemeral: true });
     }
 });
 
