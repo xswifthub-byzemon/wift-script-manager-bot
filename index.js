@@ -76,6 +76,7 @@ let scriptDatabase = {};
 let statusDatabase = {}; 
 let panelDatabase = {}; 
 let userSelections = new Map(); // เก็บค่าแยกกันด้วย key: userId_lang
+let userCooldowns = new Map();  // เก็บเวลาคูลดาวน์: userId -> timestamp
 let activeEditTarget = null, tempStatusName = null; 
 
 let activeScriptPanelEN = null, activeScriptPanelTH = null, activeAdminScriptPanel = null;
@@ -219,16 +220,16 @@ async function generateStatusPanelPayload() {
     const keys = Object.keys(statusDatabase);
     const now = new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok', hour12: true, dateStyle: 'short', timeStyle: 'short' });
     
-    // รายชื่อสคริปต์พร้อมสถานะ (Layout รูปที่ 2)
+    // รายชื่อสคริปต์พร้อมสถานะ (แก้ไขให้แสดงคำอธิบายภาษาไทยตามสั่ง)
     let list = 'No script status available.';
     if (keys.length > 0) {
         list = keys.map(k => {
             const s = statusDatabase[k];
-            return `• ${s.emoji} : **${k}**\n   🇺🇸 ${s.descEN}\n   🇹🇭 ${s.descTH}`;
-        }).join('\n\n');
+            // แสดงผล: • 🟢 : ชื่อสคริปต์ -> ใช้งานได้ปกติ
+            return `• ${s.emoji} : **${k}** —> ${s.descTH}`;
+        }).join('\n');
     }
 
-    // Legend (คำอธิบาย) (Layout รูปที่ 3)
     const legend = `
 🟢 Undetected - ใช้งานได้ปกติ
 🟡 Risky - มีโอกาสโดนแบน
@@ -284,24 +285,40 @@ client.on('interactionCreate', async (i) => {
         await i.reply({ content: lang === 'en' ? `✅ Selected **${val}**!` : `✅ เลือก **${val}** แล้ว!`, ephemeral: true });
     }
 
-    // User Get Button (⚠️ ระบบป้องกันกดปุ่มเปล่า + แยก Panel)
+    // User Get Button (⚠️ ระบบป้องกัน + คูลดาวน์ + รีเซ็ต 3 วิ)
     if (i.isButton() && i.customId.startsWith('btn_get')) {
         const lang = i.customId.includes('en') ? 'en' : 'th';
         const storageKey = `${i.user.id}_${lang}`;
         const name = userSelections.get(storageKey);
+        const cooldownTime = 60 * 60 * 1000; // 1 ชั่วโมง (3600000 ms)
 
-        // ถ้ายังไม่เลือกสคริปต์ในภาษานั้นๆ
+        // 1. เช็คคูลดาวน์ (1 ชั่วโมง)
+        if (i.user.id !== OWNER_ID && userCooldowns.has(i.user.id)) {
+            const expiration = userCooldowns.get(i.user.id) + cooldownTime;
+            if (Date.now() < expiration) {
+                const timeLeft = Math.ceil((expiration - Date.now()) / 60000); // เหลืออีกกี่นาที
+                const cdMsg = lang === 'en'
+                    ? `⏳ **Cooldown! Please wait ${timeLeft} minutes.**`
+                    : `⏳ **ใจเย็นๆ นะคะ! กรุณารออีก ${timeLeft} นาทีก่อนกดรับใหม่**`;
+                
+                const msg = await i.reply({ content: cdMsg, ephemeral: true });
+                setTimeout(() => { i.deleteReply().catch(()=>{}) }, 4000); // ลบใน 4 วิ
+                return;
+            }
+        }
+
+        // 2. เช็คว่าเลือกสคริปต์หรือยัง
         if (!name || !scriptDatabase[name]) {
             const warningMsg = lang === 'en'
                 ? '⚠️ **Please select a script from the menu first!**' 
                 : '⚠️ **กรุณาเลือกสคริปต์จากเมนูด้านบนก่อนกดปุ่มรับสคริปต์นะคะ!**';
             
-            // ส่งข้อความเตือนและลบอัตโนมัติใน 5 วินาที
             const msg = await i.reply({ content: warningMsg, ephemeral: true });
-            setTimeout(() => { i.deleteReply().catch(()=>{}) }, 5000); 
+            setTimeout(() => { i.deleteReply().catch(()=>{}) }, 5000); // ลบใน 5 วิ
             return; 
         }
         
+        // 3. ส่งลิ้งค์ (สำเร็จ)
         const webLink = `https://${DOMAIN}/view/${encodeURIComponent(name)}?lang=${lang}`;
         const embed = new EmbedBuilder().setColor('#00FF00')
             .setTitle(lang === 'en' ? `🔗 Link Ready: ${name}` : `🔗 ลิ้งค์สคริปต์พร้อมแล้ว: ${name}`)
@@ -310,6 +327,16 @@ client.on('interactionCreate', async (i) => {
 
         const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setLabel(lang === 'en' ? 'Open Script Page 🌐' : 'เปิดหน้าสคริปต์ 🌐').setStyle(ButtonStyle.Link).setURL(webLink));
         await i.reply({ embeds: [embed], components: [row], ephemeral: true });
+
+        // 4. บันทึกคูลดาวน์
+        userCooldowns.set(i.user.id, Date.now());
+
+        // 5. รีเซ็ตการเลือกใน 3 วินาที (ป้องกันกดซ้ำมั่วๆ)
+        setTimeout(async () => {
+            userSelections.delete(storageKey);
+            // อัปเดต Panel เพื่อให้ Dropdown กลับเป็นค่าเริ่มต้น
+            // (Optional: ถ้าอยากให้ Dropdown เด้งกลับทันทีต้องใช้ i.message.edit แต่มันอาจจะกวน User อื่น ดังนั้นเราลบแค่ใน Server Memory พอ)
+        }, 3000);
     }
 
     // --- ADMIN ACTIONS (Owner Only) ---
