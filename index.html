@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swift Script Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #0f0f13; color: #fff; font-family: 'Kanit', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .container { background: #1e1f24; padding: 30px; border-radius: 15px; box-shadow: 0 0 20px rgba(0, 153, 255, 0.2); max-width: 600px; width: 100%; text-align: center; border: 1px solid #2f3136; }
+        h1 { color: #0099ff; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        .subtitle { color: #b9bbbe; font-size: 0.9em; margin-bottom: 20px; }
+        .script-img { width: 100%; max-height: 250px; object-fit: cover; border-radius: 10px; margin-bottom: 20px; border: 2px solid #202225; }
+        .code-box { position: relative; background: #2f3136; padding: 15px; border-radius: 8px; text-align: left; margin-bottom: 20px; border: 1px solid #40444b; overflow-x: auto; }
+        pre { margin: 0; color: #a9fdac; font-family: 'Consolas', monospace; font-size: 0.9em; }
+        .btn { background: linear-gradient(45deg, #0099ff, #0055ff); border: none; padding: 12px 25px; color: white; border-radius: 25px; font-size: 1em; cursor: pointer; font-weight: bold; transition: 0.3s; width: 100%; display: block; margin-top: 10px; text-decoration: none; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0, 85, 255, 0.4); }
+        .warning { color: #ed4245; font-size: 0.8em; margin-top: 15px; border-top: 1px solid #40444b; padding-top: 10px; }
+        .toast { visibility: hidden; min-width: 250px; background-color: #3ba55c; color: #fff; text-align: center; border-radius: 5px; padding: 16px; position: fixed; z-index: 1; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 17px; }
+        .toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Swift Script Hub</h1>
+        <div class="subtitle">By Zemon Źx For Pai Èx</div>
+        
+        <img src="{{IMAGE_URL}}" alt="Script Preview" class="script-img">
+        <div style="text-align: left; margin-bottom: 10px; font-weight: bold; color: #fff;">📜 {{SCRIPT_NAME}}</div>
+        
+        <div class="code-box">
+            <pre id="scriptCode">{{SCRIPT_CODE}}</pre>
+        </div>
+
+        <button class="btn" onclick="copyCode()">{{COPY_BTN}}</button>
+        <div class="warning">{{WARNING_TEXT}}</div>
+    </div>
+
+    <div id="toast">✅ Copied!</div>
+
+    <script>
+        function copyCode() {
+            var codeText = document.getElementById("scriptCode").innerText;
+            navigator.clipboard.writeText(codeText).then(function() {
+                var x = document.getElementById("toast");
+                x.className = "show";
+                setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
+            }, function(err) {
+                alert('Could not copy text');
+            });
+        }
+    </script>
+</body>
+</html>
