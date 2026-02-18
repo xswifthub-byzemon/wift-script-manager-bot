@@ -42,7 +42,8 @@ app.get('/view/:key', (req, res) => {
         warning: isEN ? '⚠️ Use at your own risk. Play safe!' : '⚠️ การใช้งานมีความเสี่ยง โปรดเล่นอย่างระมัดระวัง',
         menuContact: isEN ? 'Contact Admin / Staff' : 'ติดต่อแอดมินและทีมงาน',
         discordDesc: isEN ? 'Join our community for updates and support! 🎮' : 'เข้ามาร่วมพูดคุย อัปเดตข่าวสาร และแจ้งปัญหาได้ที่นี่เลยครับ! 🎮',
-        copyLinkBtn: isEN ? 'Copy Invite Link 🔗' : 'คัดลอกลิ้งค์ดิสคอร์ด 🔗'
+        copyLinkBtn: isEN ? 'Copy Invite Link 🔗' : 'คัดลอกลิ้งค์ดิสคอร์ด 🔗',
+        toastMsg: isEN ? '✅ Copied!' : '✅ คัดลอกแล้ว!' // ✨ เพิ่มข้อความ Toast 2 ภาษา
     };
 
     const htmlPath = path.join(__dirname, 'index.html');
@@ -59,7 +60,8 @@ app.get('/view/:key', (req, res) => {
             .replace('{{WARNING_TEXT}}', data.warning)
             .replace('{{MENU_CONTACT}}', data.menuContact)
             .replace('{{DISCORD_DESC}}', data.discordDesc)
-            .replace('{{COPY_LINK_BTN}}', data.copyLinkBtn);
+            .replace('{{COPY_LINK_BTN}}', data.copyLinkBtn)
+            .replace('{{TOAST_MSG}}', data.toastMsg); // ✨ แทนที่ข้อความ Toast
 
         res.send(finalHtml);
     });
