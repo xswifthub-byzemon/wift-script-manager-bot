@@ -76,12 +76,12 @@
 
         /* 🔥🔥🔥 CSS สำหรับกล่องประกาศ (Yellow Marquee) 🔥🔥🔥 */
         .announce-box {
-            background: rgba(255, 215, 0, 0.1); /* สีเหลืองจางๆ */
-            border: 1px solid #ffd700; /* ขอบสีเหลืองทอง */
+            background: rgba(255, 215, 0, 0.1); 
+            border: 1px solid #ffd700; 
             color: #ffd700;
             padding: 8px 15px;
             border-radius: 10px;
-            margin-bottom: 20px; /* เว้นระยะห่างจากชื่อสคริปต์ */
+            margin-bottom: 20px; 
             overflow: hidden;
             white-space: nowrap;
             position: relative;
@@ -92,14 +92,13 @@
         .announce-text {
             display: inline-block;
             padding-left: 100%;
-            animation: scroll-left 15s linear infinite; /* วิ่งช้าๆ */
+            animation: scroll-left 15s linear infinite; 
         }
 
         @keyframes scroll-left {
             0% { transform: translate(0, 0); }
             100% { transform: translate(-100%, 0); }
         }
-        /* 🔥🔥🔥 จบส่วนประกาศ 🔥🔥🔥 */
 
         .code-box { 
             background: #18191c; 
@@ -219,14 +218,14 @@
     </div>
 
     <div class="container">
-        <h1 class="shine-text shuffle-text" style="font-size: 2.2em; margin-bottom: 5px;">Swift Hub Script</h1>
+        <h1 class="shine-text shuffle-title" style="font-size: 2.2em; margin-bottom: 5px;">Swift Hub Script</h1>
         <div class="subtitle">By Zemon Źx For Pai Èx 💖</div>
         
         <img src="{{IMAGE_URL}}" alt="Script Preview" class="script-img">
         
         {{ANNOUNCE_BLOCK}}
         
-        <div style="text-align: left; font-weight: 700; font-size: 1.3em; margin-bottom: 5px; color: #fff;">📜 {{SCRIPT_NAME}}</div>
+        <div class="script-name-glitch" style="text-align: center; font-weight: 700; font-size: 1.3em; margin-bottom: 5px; color: #fff;">📜 {{SCRIPT_NAME}}</div>
         
         <div class="view-count">
             <img src="https://cdn.discordapp.com/attachments/1449112368977281117/1473759734271054087/eye_check_outline_icon_139629.png?ex=69976135&is=69960fb5&hm=82a49cf9ac9e42a9428568cb862d334b75eccc89f155963381f1d3311b8e9052&" class="view-icon" alt="views">
@@ -247,7 +246,7 @@
             
             <img src="https://cdn.discordapp.com/attachments/1449112368977281117/1473746087725633647/178105ade260f76f3ce2841dfa028d97.jpg?ex=69975480&is=69960300&hm=63f14dfad7000b0cd9374b0e52e501552e06586e57f539495b9eb71104bae9d9&" class="discord-img">
             
-            <h2 class="shine-text shuffle-text" style="font-size: 1.6em; margin: 10px 0;">Swift Hub Community 🚀</h2>
+            <h2 class="shine-text shuffle-title" style="font-size: 1.6em; margin: 10px 0;">Swift Hub Community 🚀</h2>
             
             <div class="marquee-container">
                 <div class="marquee-text">{{DISCORD_DESC}}</div>
@@ -289,8 +288,10 @@
         function closeDiscordModal() { document.getElementById("discordModal").style.display = "none"; }
 
         document.addEventListener('DOMContentLoaded', () => {
-            const shuffleElements = document.querySelectorAll('.shuffle-text');
-            shuffleElements.forEach(el => {
+            
+            // 1. ระบบ Shuffle Title (หัวข้อหลัก) - แบบเดิม
+            const shuffleTitles = document.querySelectorAll('.shuffle-title');
+            shuffleTitles.forEach(el => {
                 const originalText = el.innerText;
                 const chars = originalText.split('');
                 const startShuffle = () => {
@@ -312,6 +313,44 @@
                 };
                 setInterval(startShuffle, 3000); 
             });
+
+            // 2. 🔥🔥🔥 ระบบ Glitch Script Name (ชื่อสคริปต์) - แบบใหม่ 3วิ/2วิ 🔥🔥🔥
+            const scriptNameEl = document.querySelector('.script-name-glitch');
+            if (scriptNameEl) {
+                const originalScriptText = scriptNameEl.innerText;
+                // หาตัวอักษรที่จะสลับ (เก็บต้นฉบับไว้)
+                const scriptChars = originalScriptText.split('');
+                
+                const runScriptGlitch = () => {
+                    const glitchDuration = 3000; // 3 วินาที (สลับ)
+                    const normalDuration = 2000; // 2 วินาที (นิ่ง)
+                    const speed = 50; // ความเร็วในการสลับ (ms)
+                    
+                    const startTime = Date.now();
+                    
+                    const interval = setInterval(() => {
+                        const timePassed = Date.now() - startTime;
+                        
+                        if (timePassed >= glitchDuration) {
+                            // หมดเวลา 3 วิ -> หยุดสลับ -> คืนค่าเดิม -> รอ 2 วิ แล้วเริ่มใหม่
+                            clearInterval(interval);
+                            scriptNameEl.innerText = originalScriptText;
+                            setTimeout(runScriptGlitch, normalDuration);
+                        } else {
+                            // ช่วงเวลา 3 วิ -> สลับตัวอักษร
+                            const shuffled = [...scriptChars];
+                            for (let i = shuffled.length - 1; i > 0; i--) {
+                                const j = Math.floor(Math.random() * (i + 1));
+                                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                            }
+                            scriptNameEl.innerText = shuffled.join('');
+                        }
+                    }, speed);
+                };
+
+                // เริ่มทำงานทันที
+                runScriptGlitch();
+            }
         });
     </script>
 </body>
