@@ -225,7 +225,7 @@ async function generateStatusPanelPayload() {
         list = keys.map(k => `• ${statusDatabase[k].emoji} : **${k}**`).join('\n');
     }
 
-    // Legend (คำอธิบาย) ตามรูปที่ 3
+    // Legend (คำอธิบาย)
     const legend = `
 🟢 Undetected - ใช้งานได้ปกติ
 🟡 Risky - มีโอกาสโดนแบน
