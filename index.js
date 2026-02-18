@@ -13,9 +13,9 @@ const DB_FILE = './scripts.json';
 
 // ตัวแปรระบบ
 let scriptDatabase = {};
-let activeDashboardEN = null; // เก็บ Panel อังกฤษ
-let activeDashboardTH = null; // เก็บ Panel ไทย
-let activeAdminDashboard = null; // เก็บ Panel แอดมิน (เพื่ออัปเดตเลข Real-time)
+let activeDashboardEN = null;
+let activeDashboardTH = null;
+let activeAdminDashboard = null;
 let userSelections = new Map(); 
 let activeEditTarget = null; 
 
@@ -29,48 +29,35 @@ if (fs.existsSync(DB_FILE)) {
     }
 }
 
-// ฟังก์ชั่นบันทึกและอัปเดตทุกหน้าจอ
 async function saveDatabase() {
     fs.writeFileSync(DB_FILE, JSON.stringify(scriptDatabase, null, 4));
-    await updateAllDashboards(); // ✨ อัปเดตทุก Panel ทันที
+    await updateAllDashboards(); 
 }
 
-// --- 🔥 ลงทะเบียน Slash Command (แยก 3 คำสั่ง) ---
+// --- 🔥 Slash Commands ---
 const commands = [
-    new SlashCommandBuilder()
-        .setName('admin')
-        .setDescription('🔧 Admin Control Panel (Owner Only)'),
-    new SlashCommandBuilder()
-        .setName('getscript-en')
-        .setDescription('🇺🇸 Create Script Panel (English Version)'),
-    new SlashCommandBuilder()
-        .setName('getscript-th')
-        .setDescription('🇹🇭 สร้างหน้าต่างรับสคริปต์ (เวอร์ชั่นภาษาไทย)'),
+    new SlashCommandBuilder().setName('admin').setDescription('🔧 Admin Control Panel (Owner Only)'),
+    new SlashCommandBuilder().setName('getscript-en').setDescription('🇺🇸 Create Script Panel (English Version)'),
+    new SlashCommandBuilder().setName('getscript-th').setDescription('🇹🇭 สร้างหน้าต่างรับสคริปต์ (เวอร์ชั่นภาษาไทย)'),
 ].map(command => command.toJSON());
 
 client.once('ready', async () => {
     console.log(`น้องปาย Swift Script Hub พร้อมทำงานแล้วค่ะ! Logged in as ${client.user.tag}`);
-
     const rest = new REST({ version: '10' }).setToken(TOKEN);
     try {
-        console.log('Started refreshing application (/) commands.');
-        await rest.put(
-            Routes.applicationCommands(client.user.id),
-            { body: commands },
-        );
+        await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
         console.log('Successfully reloaded application (/) commands.');
     } catch (error) {
         console.error(error);
     }
 });
 
-// --- 🎨 Helper: สร้าง User Panel (แยกภาษา) ---
+// --- 🎨 Helper: สร้าง User Panel ---
 async function generateUserPanelPayload(lang) {
     const scriptKeys = Object.keys(scriptDatabase);
     const hasScripts = scriptKeys.length > 0;
     const isEN = lang === 'en';
 
-    // ข้อความตามภาษา
     const title = isEN ? '📂 Swift Script Hub' : '📂 Swift Script Hub บริการแจกสคริปต์';
     const footer = isEN ? 'Powered by Pai ❤️ | Select script & Click button' : 'Powered by Pai ❤️ | เลือกสคริปต์แล้วกดปุ่มรับ';
     
@@ -93,7 +80,6 @@ async function generateUserPanelPayload(lang) {
         .setThumbnail(client.user.displayAvatarURL())
         .setFooter({ text: footer });
 
-    // ID แยกตามภาษา (_en, _th)
     const selectId = isEN ? 'select_script_en' : 'select_script_th';
     const btnId = isEN ? 'btn_get_en' : 'btn_get_th';
 
@@ -122,12 +108,11 @@ async function generateUserPanelPayload(lang) {
     return { embeds: [embed], components: [new ActionRowBuilder().addComponents(selectMenu), new ActionRowBuilder().addComponents(getButton)] };
 }
 
-// --- 🔧 Helper: สร้าง Admin Panel (Real-time) ---
+// --- 🔧 Helper: สร้าง Admin Panel ---
 async function generateAdminPanelPayload() {
     const scriptCount = Object.keys(scriptDatabase).length;
-
     const embed = new EmbedBuilder()
-        .setColor('#FF0000') // สีแดง Admin
+        .setColor('#FF0000')
         .setTitle('🔧 Admin Control Panel')
         .setDescription(`**จัดการคลังสคริปต์ของซีม่อน**\n\n📊 สถานะปัจจุบัน:\n#️⃣ **มีทั้งหมด ${scriptCount} สคริปต์**\n\n*เลือกเมนูจัดการด้านล่างได้เลยค่ะ*`)
         .setThumbnail(client.user.displayAvatarURL())
@@ -139,57 +124,33 @@ async function generateAdminPanelPayload() {
         new ButtonBuilder().setCustomId('btn_edit').setLabel('แก้ไข').setStyle(ButtonStyle.Secondary).setEmoji('✏️'),
         new ButtonBuilder().setCustomId('btn_delete').setLabel('ลบสคริปต์').setStyle(ButtonStyle.Danger).setEmoji('🗑️')
     );
-
     return { embeds: [embed], components: [row] };
 }
 
-// --- 🔄 ฟังก์ชั่นอัปเดตทุกหน้าจอ ---
+// --- 🔄 อัปเดตทุกหน้าจอ ---
 async function updateAllDashboards() {
-    // 1. อัปเดต Panel อังกฤษ
-    if (activeDashboardEN) {
-        try { await activeDashboardEN.edit(await generateUserPanelPayload('en')); } 
-        catch (e) { activeDashboardEN = null; }
-    }
-    // 2. อัปเดต Panel ไทย
-    if (activeDashboardTH) {
-        try { await activeDashboardTH.edit(await generateUserPanelPayload('th')); } 
-        catch (e) { activeDashboardTH = null; }
-    }
-    // 3. ✨ อัปเดต Admin Panel (Real-time Count)
-    if (activeAdminDashboard) {
-        try { await activeAdminDashboard.edit(await generateAdminPanelPayload()); }
-        catch (e) { activeAdminDashboard = null; }
-    }
+    if (activeDashboardEN) { try { await activeDashboardEN.edit(await generateUserPanelPayload('en')); } catch (e) { activeDashboardEN = null; } }
+    if (activeDashboardTH) { try { await activeDashboardTH.edit(await generateUserPanelPayload('th')); } catch (e) { activeDashboardTH = null; } }
+    if (activeAdminDashboard) { try { await activeAdminDashboard.edit(await generateAdminPanelPayload()); } catch (e) { activeAdminDashboard = null; } }
 }
 
 // --- ⚡ Interaction Handler ---
 client.on('interactionCreate', async (interaction) => {
     
-    // 🔥 SLASH COMMANDS
+    // Slash Commands
     if (interaction.isChatInputCommand()) {
         const { commandName } = interaction;
-
-        // /getscript-en
         if (commandName === 'getscript-en') {
             const payload = await generateUserPanelPayload('en');
-            const msg = await interaction.reply({ ...payload, fetchReply: true });
-            activeDashboardEN = msg;
+            activeDashboardEN = await interaction.reply({ ...payload, fetchReply: true });
         }
-
-        // /getscript-th
         if (commandName === 'getscript-th') {
             const payload = await generateUserPanelPayload('th');
-            const msg = await interaction.reply({ ...payload, fetchReply: true });
-            activeDashboardTH = msg;
+            activeDashboardTH = await interaction.reply({ ...payload, fetchReply: true });
         }
-
-        // /admin
         if (commandName === 'admin') {
             if (interaction.user.id !== OWNER_ID) return interaction.reply({ content: '🚫 No Access!', ephemeral: true });
-            
-            const payload = await generateAdminPanelPayload();
-            const msg = await interaction.reply({ ...payload, fetchReply: true });
-            activeAdminDashboard = msg; // จำข้อความไว้เพื่ออัปเดตเลข
+            activeAdminDashboard = await interaction.reply({ ...(await generateAdminPanelPayload()), fetchReply: true });
         }
     }
 
@@ -198,7 +159,9 @@ client.on('interactionCreate', async (interaction) => {
         const val = interaction.values[0];
         if (val === 'reset_selection') {
             userSelections.delete(interaction.user.id);
-            return interaction.reply({ content: '🔄 Selection cleared!', ephemeral: true });
+            // ✨ ใช้ update แทน reply เพื่อรีเฟรช Dropdown ให้กลับไปเป็น Placeholder และเอาเครื่องหมายติ๊กออก
+            const payload = await generateUserPanelPayload('en');
+            return interaction.update(payload);
         }
         userSelections.set(interaction.user.id, val);
         await interaction.reply({ content: `✅ Selected **${val}**! Click "Get Script" button below.`, ephemeral: true });
@@ -207,9 +170,9 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.customId === 'btn_get_en' && interaction.isButton()) {
         const scriptName = userSelections.get(interaction.user.id);
         if (!scriptName || !scriptDatabase[scriptName]) return interaction.reply({ content: '⚠️ Please select a script from the dropdown first!', ephemeral: true });
-        
         const code = scriptDatabase[scriptName];
-        await interaction.reply({ content: `✨ **${scriptName}** is here! 👇\n\`\`\`lua\n${code}\n\`\`\``, ephemeral: true });
+        // ✨ แก้ไข Format เป็นแบบ `code` บรรทัดเดียว
+        await interaction.reply({ content: `✨ **${scriptName}** is here! 👇\n\`${code}\``, ephemeral: true });
     }
 
     // 🟢 USER INTERACTION (Thai)
@@ -217,7 +180,9 @@ client.on('interactionCreate', async (interaction) => {
         const val = interaction.values[0];
         if (val === 'reset_selection') {
             userSelections.delete(interaction.user.id);
-            return interaction.reply({ content: '🔄 ยกเลิกการเลือกเรียบร้อย!', ephemeral: true });
+            // ✨ ใช้ update เพื่อรีเฟรช Dropdown กลับไปเป็นค่าเริ่มต้น
+            const payload = await generateUserPanelPayload('th');
+            return interaction.update(payload);
         }
         userSelections.set(interaction.user.id, val);
         await interaction.reply({ content: `✅ เลือก **${val}** แล้ว! กดปุ่ม "รับสคริปต์" ด้านล่างได้เลยค่ะ`, ephemeral: true });
@@ -226,9 +191,9 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.customId === 'btn_get_th' && interaction.isButton()) {
         const scriptName = userSelections.get(interaction.user.id);
         if (!scriptName || !scriptDatabase[scriptName]) return interaction.reply({ content: '⚠️ กรุณาเลือกสคริปต์จากเมนูก่อนกดปุ่มนะคะ!', ephemeral: true });
-        
         const code = scriptDatabase[scriptName];
-        await interaction.reply({ content: `✨ **${scriptName}** มาแล้วค่ะซีม่อนจัดให้! 👇\n\`\`\`lua\n${code}\n\`\`\``, ephemeral: true });
+        // ✨ แก้ไข Format เป็นแบบ `code` บรรทัดเดียว
+        await interaction.reply({ content: `✨ **${scriptName}** มาแล้วค่ะซีม่อนจัดให้! 👇\n\`${code}\``, ephemeral: true });
     }
 
     // 🔴 ADMIN INTERACTION
@@ -264,20 +229,20 @@ client.on('interactionCreate', async (interaction) => {
         await interaction.reply({ content: 'เลือกสคริปต์ที่จะแก้ไขค่ะ:', components: [row], ephemeral: true });
     }
 
-    // Modal Submit & Menu Selections
+    // Modal Submit & Menu Selections (Admin)
     if (interaction.isModalSubmit() && interaction.customId === 'modal_add') {
         const name = interaction.fields.getTextInputValue('inp_name');
         const code = interaction.fields.getTextInputValue('inp_code');
         scriptDatabase[name] = code;
-        await saveDatabase(); // 🔄 Trigger Update All Panels
-        await interaction.reply({ content: `✅ เพิ่มสคริปต์ **${name}** แล้ว! (Admin Panel อัปเดตแล้ว)`, ephemeral: true });
+        await saveDatabase(); 
+        await interaction.reply({ content: `✅ เพิ่มสคริปต์ **${name}** แล้ว!`, ephemeral: true });
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId === 'menu_delete') {
         const name = interaction.values[0];
         delete scriptDatabase[name];
-        await saveDatabase(); // 🔄 Trigger Update All Panels
-        await interaction.reply({ content: `🗑️ ลบ **${name}** แล้ว! (Admin Panel อัปเดตแล้ว)`, ephemeral: true });
+        await saveDatabase();
+        await interaction.reply({ content: `🗑️ ลบ **${name}** แล้ว!`, ephemeral: true });
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId === 'menu_select_edit') {
