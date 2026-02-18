@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder, REST, Routes, SlashCommandBuilder } = require('discord.js');
 const fs = require('fs');
 require('dotenv').config();
 
@@ -11,10 +11,10 @@ const TOKEN = process.env.DISCORD_TOKEN;
 const OWNER_ID = process.env.OWNER_ID; 
 const DB_FILE = './scripts.json';
 
-// ตัวแปรเก็บข้อมูลระบบ
-let scriptDatabase = {}; // เก็บสคริปต์
-let activeDashboard = null; // เก็บข้อความ Panel ล่าสุดไว้เพื่ออัปเดต Real-time
-let userSelections = new Map(); // เก็บว่าใครเลือกสคริปต์อะไรอยู่ (User ID -> Script Name)
+// ตัวแปรระบบ
+let scriptDatabase = {};
+let activeDashboard = null; 
+let userSelections = new Map(); 
 
 // โหลดข้อมูล
 if (fs.existsSync(DB_FILE)) {
@@ -28,12 +28,35 @@ if (fs.existsSync(DB_FILE)) {
 
 function saveDatabase() {
     fs.writeFileSync(DB_FILE, JSON.stringify(scriptDatabase, null, 4));
-    // ทุกครั้งที่เซฟข้อมูล ให้ไปอัปเดตหน้า Panel ด้วย
     updateDashboard(); 
 }
 
-client.once('ready', () => {
-    console.log(`น้องปาย Swift Script Hub (Real-time) พร้อมทำงานแล้วค่ะ! Logged in as ${client.user.tag}`);
+// --- 🔥 ส่วนลงทะเบียน Slash Command (เพิ่มใหม่) ---
+const commands = [
+    new SlashCommandBuilder()
+        .setName('admin')
+        .setDescription('จัดการคลังสคริปต์ (เฉพาะเจ้าของ)'),
+    new SlashCommandBuilder()
+        .setName('getscript')
+        .setDescription('เปิดหน้าต่างรับสคริปต์'),
+].map(command => command.toJSON());
+
+client.once('ready', async () => {
+    console.log(`น้องปาย Swift Script Hub พร้อมทำงานแล้วค่ะ! Logged in as ${client.user.tag}`);
+
+    // ลงทะเบียนคำสั่งกับ Discord ทันทีที่รัน
+    const rest = new REST({ version: '10' }).setToken(TOKEN);
+    try {
+        console.log('Started refreshing application (/) commands.');
+        // ลงทะเบียนแบบ Global (อาจใช้เวลาอัปเดต 1-5 นาทีในบางครั้ง)
+        await rest.put(
+            Routes.applicationCommands(client.user.id),
+            { body: commands },
+        );
+        console.log('Successfully reloaded application (/) commands.');
+    } catch (error) {
+        console.error(error);
+    }
 });
 
 // --- ฟังก์ชั่นสร้าง/อัปเดตหน้า Dashboard ---
@@ -41,23 +64,19 @@ async function generateDashboardPayload() {
     const scriptKeys = Object.keys(scriptDatabase);
     const hasScripts = scriptKeys.length > 0;
 
-    // 1. สร้าง Embed
     const embed = new EmbedBuilder()
-        .setColor(hasScripts ? '#0099ff' : '#808080') // สีฟ้าถ้ามีของ สีเทาถ้าว่าง
+        .setColor(hasScripts ? '#0099ff' : '#808080')
         .setTitle('📂 Swift Script Hub')
-        .setImage('https://media.discordapp.net/attachments/123456789/123456789/banner.png') // (ใส่ลิ้งค์แบนเนอร์ตรงนี้ได้นะคะถ้ามี)
         .setThumbnail(client.user.displayAvatarURL())
         .setFooter({ text: 'Powered by Pai ❤️ | Select script & Click button' });
 
     if (hasScripts) {
-        // แสดงรายการสคริปต์ใน Embed แบบ Real-time
         const listText = scriptKeys.map((k, i) => `> **${i + 1}. ${k}**`).join('\n');
         embed.setDescription(`**รายชื่อสคริปต์ที่พร้อมใช้งาน:**\n${listText}\n\n*เลือกสคริปต์จากเมนูด้านล่าง แล้วกดปุ่ม "รับสคริปต์" นะคะ*`);
     } else {
         embed.setDescription('❌ **ตอนนี้คลังสคริปต์ว่างเปล่าค่ะ**\nรอซีม่อนมาเติมของแป๊บนึงน้าา...');
     }
 
-    // 2. สร้าง Dropdown (เลือกสคริปต์)
     const selectMenu = new StringSelectMenuBuilder()
         .setCustomId('select_script_user')
         .setPlaceholder(hasScripts ? '🔻 เลือกสคริปต์ที่ต้องการ...' : '⛔ ไม่มีสคริปต์')
@@ -69,108 +88,97 @@ async function generateDashboardPayload() {
             value: key,
             description: 'คลิกเพื่อเลือก',
             emoji: '📜'
-        })).slice(0, 25); // Discord รับได้ max 25
+        })).slice(0, 25);
         selectMenu.addOptions(options);
     } else {
         selectMenu.addOptions([{ label: 'Empty', value: 'none', description: 'No scripts available' }]);
     }
 
-    // 3. สร้างปุ่ม (กดรับ)
     const getButton = new ButtonBuilder()
         .setCustomId('btn_get_script_final')
         .setLabel('รับสคริปต์')
         .setStyle(ButtonStyle.Success)
         .setEmoji('📥')
-        .setDisabled(!hasScripts); // ถ้าไม่มีสคริปต์ ปุ่มกดไม่ได้
+        .setDisabled(!hasScripts);
 
-    // จัดใส่ Row
     const row1 = new ActionRowBuilder().addComponents(selectMenu);
     const row2 = new ActionRowBuilder().addComponents(getButton);
 
     return { embeds: [embed], components: [row1, row2] };
 }
 
-// ฟังก์ชั่นอัปเดตข้อความเดิม (Real-time)
 async function updateDashboard() {
     if (activeDashboard) {
         try {
             const payload = await generateDashboardPayload();
             await activeDashboard.edit(payload);
         } catch (err) {
-            console.log("หาข้อความเดิมไม่เจอ หรือถูกลบไปแล้ว สร้างใหม่แทนเมื่อมีการเรียกใช้");
+            console.log("Dashboard update failed (message might be deleted).");
             activeDashboard = null;
         }
     }
 }
 
-// --- 1. จัดการคำสั่ง Slash Commands / Prefix ---
-client.on('messageCreate', async (message) => {
-    if (message.author.bot) return;
-
-    // 🟢 Panel สำหรับสมาชิก (/getscript)
-    if (message.content === '/getscript') {
-        const payload = await generateDashboardPayload();
-        const msg = await message.channel.send(payload);
-        activeDashboard = msg; // จำข้อความนี้ไว้ เพื่ออัปเดต Real-time
-    }
-
-    // 🔴 Panel หลังบ้าน (/admin)
-    if (message.content === '/admin') {
-        if (message.author.id !== OWNER_ID) return message.reply('อุ๊บส์! คำสั่งนี้สำหรับซีม่อนสุดหล่อคนเดียวค่ะ 🤫');
-
-        const embed = new EmbedBuilder()
-            .setColor('#FF0000')
-            .setTitle('🔧 Admin Control Panel')
-            .setDescription(`จัดการคลังสคริปต์ของซีม่อน (มีทั้งหมด ${Object.keys(scriptDatabase).length} สคริปต์)`)
-            .setThumbnail(client.user.displayAvatarURL());
-
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('btn_add').setLabel('เติมสคริปต์').setStyle(ButtonStyle.Success).setEmoji('➕'),
-            new ButtonBuilder().setCustomId('btn_check').setLabel('เช็คสคริปต์').setStyle(ButtonStyle.Primary).setEmoji('👀'),
-            new ButtonBuilder().setCustomId('btn_edit').setLabel('แก้ไข').setStyle(ButtonStyle.Secondary).setEmoji('✏️'),
-            new ButtonBuilder().setCustomId('btn_delete').setLabel('ลบสคริปต์').setStyle(ButtonStyle.Danger).setEmoji('🗑️')
-        );
-
-        await message.channel.send({ embeds: [embed], components: [row] });
-    }
-});
-
-// --- 2. จัดการ Interaction ---
+// --- 2. จัดการ Interaction (รวม Slash Command และปุ่ม) ---
 client.on('interactionCreate', async (interaction) => {
     
+    // 🔥 จัดการ Slash Command (/admin, /getscript)
+    if (interaction.isChatInputCommand()) {
+        const { commandName } = interaction;
+
+        // คำสั่ง /getscript
+        if (commandName === 'getscript') {
+            const payload = await generateDashboardPayload();
+            // ส่งข้อความและจำไว้เพื่ออัปเดต
+            const msg = await interaction.reply({ ...payload, fetchReply: true });
+            activeDashboard = msg;
+        }
+
+        // คำสั่ง /admin
+        if (commandName === 'admin') {
+            if (interaction.user.id !== OWNER_ID) {
+                return interaction.reply({ content: 'อุ๊บส์! คำสั่งนี้สำหรับซีม่อนสุดหล่อคนเดียวค่ะ 🤫', ephemeral: true });
+            }
+
+            const embed = new EmbedBuilder()
+                .setColor('#FF0000')
+                .setTitle('🔧 Admin Control Panel')
+                .setDescription(`จัดการคลังสคริปต์ของซีม่อน (มีทั้งหมด ${Object.keys(scriptDatabase).length} สคริปต์)`)
+                .setThumbnail(client.user.displayAvatarURL());
+
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('btn_add').setLabel('เติมสคริปต์').setStyle(ButtonStyle.Success).setEmoji('➕'),
+                new ButtonBuilder().setCustomId('btn_check').setLabel('เช็คสคริปต์').setStyle(ButtonStyle.Primary).setEmoji('👀'),
+                new ButtonBuilder().setCustomId('btn_edit').setLabel('แก้ไข').setStyle(ButtonStyle.Secondary).setEmoji('✏️'),
+                new ButtonBuilder().setCustomId('btn_delete').setLabel('ลบสคริปต์').setStyle(ButtonStyle.Danger).setEmoji('🗑️')
+            );
+
+            await interaction.reply({ embeds: [embed], components: [row] }); // Admin เห็นคนเดียวหรือไม่ก็ได้ อันนี้ตั้งให้เห็นปกติ
+        }
+    }
+
     // ------------------------------------------
-    // 🟢 โซน User ใช้งาน (เลือกสคริปต์ + กดรับ)
+    // 🟢 โซน User ใช้งาน (ปุ่มและเมนู)
     // ------------------------------------------
 
-    // จังหวะที่ 1: User เลือกของใน Dropdown
     if (interaction.isStringSelectMenu() && interaction.customId === 'select_script_user') {
         const selectedScript = interaction.values[0];
-        
-        // บันทึกว่า User คนนี้เลือกอะไรไว้
         userSelections.set(interaction.user.id, selectedScript);
-
-        // ตอบกลับแบบเงียบๆ ว่าเลือกแล้ว
         await interaction.reply({ 
             content: `✅ คุณเลือก **${selectedScript}** แล้ว! กดปุ่ม **"รับสคริปต์"** สีเขียวด้านล่างได้เลยค่ะ`, 
             ephemeral: true 
         });
     }
 
-    // จังหวะที่ 2: User กดปุ่ม "รับสคริปต์"
     if (interaction.isButton() && interaction.customId === 'btn_get_script_final') {
-        // เช็คว่า User เลือกของยัง?
         const selectedScript = userSelections.get(interaction.user.id);
-
         if (!selectedScript || !scriptDatabase[selectedScript]) {
             return interaction.reply({ 
                 content: '⚠️ กรุณาเลือกสคริปต์จากเมนู Dropdown ด้านบนก่อนกดปุ่มนะคะ!', 
                 ephemeral: true 
             });
         }
-
         const code = scriptDatabase[selectedScript];
-        
-        // ส่งสคริปต์ให้
         await interaction.reply({
             content: `**${selectedScript}** มาแล้วค่ะซีม่อนจัดให้! 👇\n\`\`\`lua\n${code}\n\`\`\``,
             ephemeral: true 
@@ -178,11 +186,13 @@ client.on('interactionCreate', async (interaction) => {
     }
 
     // ------------------------------------------
-    // 🔴 โซน Admin (เหมือนเดิมแต่เพิ่มอัปเดต Real-time)
+    // 🔴 โซน Admin (Logic เดิม)
     // ------------------------------------------
     
     if (!['btn_add', 'btn_check', 'btn_edit', 'btn_delete', 'menu_delete', 'menu_select_edit'].includes(interaction.customId) && !interaction.isModalSubmit()) return;
-    if (interaction.user.id !== OWNER_ID && !interaction.isStringSelectMenu()) return; // check ID
+    
+    // Check ID (ถ้าไม่ใช่ Slash Command ต้องเช็คตรงนี้ด้วย)
+    if (interaction.user.id !== OWNER_ID && !interaction.isStringSelectMenu() && !interaction.isModalSubmit()) return;
 
     // ปุ่มเติม
     if (interaction.isButton() && interaction.customId === 'btn_add') {
@@ -220,30 +230,34 @@ client.on('interactionCreate', async (interaction) => {
         await interaction.reply({ content: 'เลือกสคริปต์ที่จะแก้ไขค่ะ:', components: [row], ephemeral: true });
     }
 
-    // --- Actions ---
-
-    // Modal Submit (เติม) -> Auto Update Real-time
+    // Modal Submit (เติม)
     if (interaction.isModalSubmit() && interaction.customId === 'modal_add') {
         const name = interaction.fields.getTextInputValue('inp_name');
         const code = interaction.fields.getTextInputValue('inp_code');
         scriptDatabase[name] = code;
-        saveDatabase(); // ✨ ตรงนี้จะไปเรียก updateDashboard() เอง
+        saveDatabase(); 
         await interaction.reply({ content: `✅ เพิ่มสคริปต์ **${name}** เรียบร้อย! Panel หน้าบ้านอัปเดตแล้วค่ะ`, ephemeral: true });
     }
 
-    // Menu Select (ลบ) -> Auto Update Real-time
+    // Menu Select (ลบ)
     if (interaction.isStringSelectMenu() && interaction.customId === 'menu_delete') {
         const name = interaction.values[0];
         delete scriptDatabase[name];
-        saveDatabase(); // ✨ ตรงนี้จะไปเรียก updateDashboard() เอง
+        saveDatabase(); 
         await interaction.reply({ content: `🗑️ ลบ **${name}** เรียบร้อย! Panel หน้าบ้านอัปเดตแล้วค่ะ`, ephemeral: true });
     }
 
     // Menu Select (เลือกตัวแก้)
     if (interaction.isStringSelectMenu() && interaction.customId === 'menu_select_edit') {
         const name = interaction.values[0];
-        client.tempEditTarget = name;
-        const modal = new ModalBuilder().setCustomId('modal_edit_save').setTitle(`แก้ไข: ${name.substring(0, 30)}`);
+        // เช็คก่อนว่าใครกด
+        if (interaction.user.id !== OWNER_ID) return; 
+        
+        // เราจะส่งชื่อผ่าน customId ของ Modal ไม่ได้ (มันยาวเกิน)
+        // ใช้ cache ชั่วคราวเหมือนเดิม
+        activeEditTarget = name; // ใช้ตัวแปร Global หรือแนบไปกับ client
+
+        const modal = new ModalBuilder().setCustomId('modal_edit_save').setTitle(`แก้ไข: ${name.substring(0, 20)}`);
         const codeInput = new TextInputBuilder().setCustomId('inp_new_code').setLabel("วางโค้ดใหม่ที่นี่").setStyle(TextInputStyle.Paragraph).setPlaceholder("วางโค้ดใหม่ทับอันเดิมได้เลยค่ะ").setRequired(true);
         modal.addComponents(new ActionRowBuilder().addComponents(codeInput));
         await interaction.showModal(modal);
@@ -252,16 +266,26 @@ client.on('interactionCreate', async (interaction) => {
     // Modal Submit (บันทึกแก้)
     if (interaction.isModalSubmit() && interaction.customId === 'modal_edit_save') {
         const newCode = interaction.fields.getTextInputValue('inp_new_code');
-        const targetName = client.tempEditTarget;
-        if (targetName && scriptDatabase[targetName] !== undefined) {
-            scriptDatabase[targetName] = newCode;
+        
+        // เนื่องจากเราไม่ได้ส่งชื่อมา เราต้องรู้ว่ากำลังแก้อันไหน
+        // *ในเวอร์ชั่นนี้เพื่อความชัวร์ ปายแนะนำให้ซีม่อนแก้ทีละตัวนะคะ*
+        // แต่เพื่อให้โค้ดสมบูรณ์ ปายจะใช้ชื่อจาก Title ของ Modal ก็ได้ แต่ Title มันถูกตัดคำ
+        // ดังนั้นใช้ตัวแปร global 'activeEditTarget' ที่ประกาศไว้ข้างบน (แต่ต้องระวังถ้าแก้พร้อมกัน)
+        // **เพิ่มตัวแปรนี้ด้านบนสุดของไฟล์ด้วยนะคะ: let activeEditTarget = null;**
+        
+        if (typeof activeEditTarget !== 'undefined' && activeEditTarget && scriptDatabase[activeEditTarget] !== undefined) {
+            scriptDatabase[activeEditTarget] = newCode;
             saveDatabase();
-            await interaction.reply({ content: `✨ อัพเดตโค้ด **${targetName}** เรียบร้อยค่ะ!`, ephemeral: true });
-            client.tempEditTarget = null;
+            await interaction.reply({ content: `✨ อัพเดตโค้ด **${activeEditTarget}** เรียบร้อยค่ะ!`, ephemeral: true });
+            activeEditTarget = null;
         } else {
-            await interaction.reply({ content: `❌ ผิดพลาด! หาชื่อไม่เจอ`, ephemeral: true });
+             // Fallback: ถ้าหาไม่เจอ ให้ลองแก้แบบเพิ่มใหม่แทน หรือแจ้งเตือน
+             await interaction.reply({ content: `⚠️ ขอโทษค่ะ ระบบจำไม่ได้ว่าแก้อันไหน ลองกดแก้ไขใหม่นะคะ`, ephemeral: true });
         }
     }
 });
+
+// เพิ่มตัวแปร global สำหรับการแก้ไข (ใส่ไว้บนสุดใต้ let userSelections ก็ได้)
+let activeEditTarget = null; 
 
 client.login(TOKEN);
