@@ -25,7 +25,7 @@
         .shine-text { 
             text-transform: uppercase; 
             letter-spacing: 3px; 
-            font-weight: 900; /* หนาสุดๆ เพื่อให้เห็นสีชัด */
+            font-weight: 900; 
             
             /* 🔥 สีวิ่ง: ขาว -> ดำสนิท -> ขาว */
             background: linear-gradient(90deg, #ffffff, #000000, #ffffff);
@@ -37,10 +37,9 @@
             
             animation: shine 3s linear infinite;
             
-            /* 🔥 ขอบสีขาว: ทำให้ตอนเป็นสีดำ จะกลายเป็นตัวหนังสือแบบ Outline (ขอบขาว ไส้ดำ) */
+            /* 🔥 ขอบสีขาว */
             -webkit-text-stroke: 1.5px #ffffff; 
             
-            /* เงาเล็กน้อย */
             filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
         }
         @keyframes shine { to { background-position: 200% center; } }
@@ -62,7 +61,15 @@
         }
         .container:hover { transform: translateY(-5px); }
 
-        .subtitle { color: #888; font-size: 0.85em; margin-bottom: 25px; letter-spacing: 1px; }
+        /* 🔥 แก้ไข Subtitle: ขีดเส้นใต้ */
+        .subtitle { 
+            color: #888; 
+            font-size: 0.85em; 
+            margin-bottom: 25px; 
+            letter-spacing: 1px;
+            text-decoration: underline; /* ขีดเส้นใต้ */
+            text-underline-offset: 5px; /* เว้นระยะเส้น */
+        }
 
         .script-img { 
             width: 100%; 
@@ -121,7 +128,7 @@
         .sidenav a:hover { color: #fff; padding-left: 40px; }
         .sidenav .closebtn { position: absolute; top: 0; right: 25px; font-size: 40px; margin-left: 50px; }
 
-        /* --- 🟦 Discord Modal (โปร่งใส + เบลอหลัง) --- */
+        /* --- 🟦 Discord Modal --- */
         .modal { 
             display: none; 
             position: fixed; 
@@ -135,7 +142,7 @@
             backdrop-filter: blur(5px); 
         }
         .modal-content { 
-            background-color: rgba(20, 20, 23, 0.85); /* ✅ โปร่งแสงมองทะลุเห็นข้างหลัง */
+            background-color: rgba(20, 20, 23, 0.85); 
             backdrop-filter: blur(20px); 
             border: 1px solid rgba(255,255,255,0.15); 
             padding: 40px; 
@@ -154,30 +161,23 @@
         }
         .close-modal:hover { transform: scale(1.2); color: #ed4245; }
 
-        /* 🔥🔥🔥 แก้ไขส่วนรูปภาพ Discord และเพิ่ม Animation ขอบกระพริบ 🔥🔥🔥 */
-        
-        /* 1. สร้าง Keyframes สำหรับการกระพริบสลับสี ขาว-ดำ แบบชัดๆ */
         @keyframes borderBlink {
-            0%, 49% { border-color: #ffffff; } /* สีขาว */
-            50%, 100% { border-color: #000000; } /* สีดำ */
+            0%, 49% { border-color: #ffffff; }
+            50%, 100% { border-color: #000000; }
         }
 
-        /* 2. แก้ไข CSS ของรูปภาพ Discord */
         .discord-img { 
-            width: 100%; /* ความกว้างเต็ม Modal */
-            height: 180px; /* กำหนดความสูงให้เป็น Banner สี่เหลี่ยมผืนผ้า */
-            object-fit: cover; /* ให้รูปเต็มกรอบโดยไม่เสียสัดส่วน */
-            border-radius: 15px; /* ขอบมนนิดๆ เหมือนรูปหลัก */
+            width: 100%; 
+            height: 180px; 
+            object-fit: cover; 
+            border-radius: 15px; 
             margin-bottom: 15px; 
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-
-            /* ตั้งค่าขอบกระพริบ */
             border-width: 4px;
             border-style: solid;
-            border-color: #ffffff; /* สีเริ่มต้น */
-            animation: borderBlink 0.8s step-end infinite; /* กระพริบสลับสีทุก 0.8 วินาที แบบชัดๆ (step-end) */
+            border-color: #ffffff; 
+            animation: borderBlink 0.8s step-end infinite; 
         }
-        /* 🔥🔥🔥 สิ้นสุดการแก้ไข 🔥🔥🔥 */
         
         .marquee-container { width: 100%; overflow: hidden; white-space: nowrap; margin: 20px 0; background: rgba(0,0,0,0.3); padding: 5px 0; border-radius: 5px; }
         .marquee-text { display: inline-block; padding-left: 100%; animation: marquee 12s linear infinite; color: #ccc; font-size: 0.95em; }
@@ -200,8 +200,9 @@
     </div>
 
     <div class="container">
-        <h1 class="shine-text" style="font-size: 2.2em; margin-bottom: 5px;">Swift Hub Script</h1>
-        <div class="subtitle">By Zemon Źx For Pai Èx</div>
+        <h1 class="shine-text shuffle-text" style="font-size: 2.2em; margin-bottom: 5px;">Swift Hub Script</h1>
+        
+        <div class="subtitle">By Zemon Źx For Pai Èx 💖</div>
         
         <img src="{{IMAGE_URL}}" alt="Script Preview" class="script-img">
         
@@ -226,7 +227,7 @@
             
             <img src="https://cdn.discordapp.com/attachments/1449112368977281117/1473746087725633647/178105ade260f76f3ce2841dfa028d97.jpg?ex=69975480&is=69960300&hm=63f14dfad7000b0cd9374b0e52e501552e06586e57f539495b9eb71104bae9d9&" class="discord-img">
             
-            <h2 class="shine-text" style="font-size: 1.6em; margin: 10px 0;">Swift Hub Community 🚀</h2>
+            <h2 class="shine-text shuffle-text" style="font-size: 1.6em; margin: 10px 0;">Swift Hub Community 🚀</h2>
             
             <div class="marquee-container">
                 <div class="marquee-text">{{DISCORD_DESC}}</div>
@@ -266,6 +267,43 @@
             document.getElementById("discordModal").style.display = "flex"; 
         }
         function closeDiscordModal() { document.getElementById("discordModal").style.display = "none"; }
+
+        // 🔥🔥🔥 SCRIPT สลับตัวอักษร (Shuffle Text) 🔥🔥🔥
+        document.addEventListener('DOMContentLoaded', () => {
+            const shuffleElements = document.querySelectorAll('.shuffle-text');
+
+            shuffleElements.forEach(el => {
+                const originalText = el.innerText;
+                const chars = originalText.split('');
+                
+                // ฟังก์ชั่นสุ่มตัวอักษร
+                const startShuffle = () => {
+                    let shuffleCount = 0;
+                    const maxShuffles = 15; // จำนวนครั้งที่สลับ (ความนานของการขยับ)
+                    
+                    const shuffleInterval = setInterval(() => {
+                        // สลับตำแหน่งตัวอักษรในอาเรย์
+                        const shuffledChars = [...chars];
+                        for (let i = shuffledChars.length - 1; i > 0; i--) {
+                            const j = Math.floor(Math.random() * (i + 1));
+                            [shuffledChars[i], shuffledChars[j]] = [shuffledChars[j], shuffledChars[i]];
+                        }
+                        
+                        el.innerText = shuffledChars.join('');
+                        shuffleCount++;
+
+                        // หยุดสลับและคืนค่าเดิม
+                        if (shuffleCount >= maxShuffles) {
+                            clearInterval(shuffleInterval);
+                            el.innerText = originalText; // คืนค่าชื่อที่ถูกต้อง
+                        }
+                    }, 50); // ความเร็วในการขยับ (ms)
+                };
+
+                // วนลูปทุก 2 วินาที + เวลาที่ใช้สลับ
+                setInterval(startShuffle, 3000); // 3000ms = 3 วิ (ให้เวลาหยุดนิ่งประมาณ 2 วิ)
+            });
+        });
     </script>
 </body>
 </html>
