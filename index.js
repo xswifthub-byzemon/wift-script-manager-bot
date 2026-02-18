@@ -52,7 +52,7 @@ client.once('ready', async () => {
     }
 });
 
-// --- 🎨 Helper: สร้าง User Panel ---
+// --- 🎨 Helper: สร้าง User Panel (แก้ไขใหม่ไฉไลกว่าเดิม ✨) ---
 async function generateUserPanelPayload(lang) {
     const scriptKeys = Object.keys(scriptDatabase);
     const hasScripts = scriptKeys.length > 0;
@@ -63,10 +63,37 @@ async function generateUserPanelPayload(lang) {
     
     let description = '';
     if (hasScripts) {
-        const list = scriptKeys.map((k, i) => `\` ${i + 1} \` ${k}`).join('\n');
-        description = isEN 
-            ? `**📜 Available Scripts (${scriptKeys.length}):**\n${list}\n\n*Select a script from the dropdown below and click "Get Script".*`
-            : `**📜 สคริปต์ที่พร้อมใช้งาน (${scriptKeys.length}):**\n${list}\n\n*เลือกสคริปต์จากเมนูด้านล่าง แล้วกดปุ่ม "รับสคริปต์" นะคะ*`;
+        // ✨ จัดรูปแบบรายการตามที่ขอ: Script 1 : Name
+        const list = scriptKeys.map((k, i) => isEN 
+            ? `\` Script ${i + 1} : ${k} \`` 
+            : `\` สคริปต์ ${i + 1} : ${k} \``
+        ).join('\n');
+
+        if (isEN) {
+            description = `
+**Thank you for using Swift Hub!** ❤️
+We provide high-quality scripts just for you.
+
+⚠️ **Warning:** Using scripts involves risk. Please play responsibly and safely.
+----------------------------------------------------
+**📜 Available Scripts (${scriptKeys.length}):**
+${list}
+
+*Select a script from the dropdown below and click "Get Script".*
+`;
+        } else {
+            description = `
+**ขอบคุณที่ไว้ใจใช้บริการ Swift Hub นะคะ** ❤️
+เราคัดสรรสคริปต์คุณภาพมาเพื่อคุณโดยเฉพาะ
+
+⚠️ **คำเตือน:** การใช้สคริปต์มีความเสี่ยง โปรดเล่นอย่างมีสติและระมัดระวังด้วยนะคะ
+----------------------------------------------------
+**📜 สคริปต์ที่พร้อมใช้งาน (${scriptKeys.length}):**
+${list}
+
+*เลือกสคริปต์จากเมนูด้านล่าง แล้วกดปุ่ม "รับสคริปต์" นะคะ*
+`;
+        }
     } else {
         description = isEN
             ? '❌ **Out of Stock**\nWaiting for update...'
@@ -171,12 +198,12 @@ client.on('interactionCreate', async (interaction) => {
         if (!scriptName || !scriptDatabase[scriptName]) return interaction.reply({ content: '⚠️ Please select a script from the dropdown first!', ephemeral: true });
         const code = scriptDatabase[scriptName];
         
-        // ✨ Create English Result Embed
+        // ✨ Embed ผลลัพธ์ภาษาอังกฤษ (แก้ไขตามสั่ง)
         const resultEmbed = new EmbedBuilder()
-            .setColor('#00FF00') // Green for success
-            .setTitle(`📜 Script: ${scriptName}`)
+            .setColor('#00FF00') 
+            .setTitle(`📜 Script Map : ${scriptName}`) // แก้เป็น Script Map
             .setDescription(`Here is your script! Enjoy and play safe. 🎮`)
-            .addFields({ name: 'Your Code:', value: `\`${code}\`` }) // Code block
+            .addFields({ name: 'Code Script:', value: `\`${code}\`` }) // แก้เป็น Code Script
             .setFooter({ text: 'Thank you for using Swift Hub! ❤️', iconURL: client.user.displayAvatarURL() })
             .setTimestamp();
 
@@ -200,12 +227,12 @@ client.on('interactionCreate', async (interaction) => {
         if (!scriptName || !scriptDatabase[scriptName]) return interaction.reply({ content: '⚠️ กรุณาเลือกสคริปต์จากเมนูก่อนกดปุ่มนะคะ!', ephemeral: true });
         const code = scriptDatabase[scriptName];
 
-        // ✨ Create Thai Result Embed
+        // ✨ Embed ผลลัพธ์ภาษาไทย (แก้ไขตามสั่ง)
         const resultEmbed = new EmbedBuilder()
-            .setColor('#00FF00') // สีเขียวสำเร็จ
-            .setTitle(`📜 สคริปต์: ${scriptName}`)
+            .setColor('#00FF00') 
+            .setTitle(`📜 สคริปต์แมพ : ${scriptName}`) // แก้เป็น สคริปต์แมพ
             .setDescription(`นี่คือสคริปต์ของคุณค่ะ! ขอให้สนุกกับการใช้งานนะคะ 🎮\n*⚠️ คำเตือน: การใช้สคริปต์มีความเสี่ยง โปรดเล่นอย่างมีสติและระมัดระวังด้วยนะคะ*`)
-            .addFields({ name: 'โค้ดของคุณ:', value: `\`${code}\`` }) // Code block
+            .addFields({ name: 'โค้ดสคริปต์:', value: `\`${code}\`` }) // แก้เป็น โค้ดสคริปต์
             .setFooter({ text: 'ขอบคุณที่ไว้ใจ Swift Hub นะคะ ❤️', iconURL: client.user.displayAvatarURL() })
             .setTimestamp();
 
@@ -245,7 +272,6 @@ client.on('interactionCreate', async (interaction) => {
         await interaction.reply({ content: 'เลือกสคริปต์ที่จะแก้ไขค่ะ:', components: [row], ephemeral: true });
     }
 
-    // Modal Submit & Menu Selections (Admin)
     if (interaction.isModalSubmit() && interaction.customId === 'modal_add') {
         const name = interaction.fields.getTextInputValue('inp_name');
         const code = interaction.fields.getTextInputValue('inp_code');
