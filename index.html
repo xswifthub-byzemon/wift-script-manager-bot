@@ -6,9 +6,10 @@
     <title>Swift Script Hub</title>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;800&display=swap" rel="stylesheet">
     <style>
+        /* โครงสร้างหลัก */
         body { background-color: #0f0f13; color: #fff; font-family: 'Kanit', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; overflow-x: hidden; }
         
-        /* 🔥 Animated Title (White-Black Gradient) */
+        /* 🔥 เอฟเฟกต์ตัวหนังสือวิ่ง ขาว-ดำ (Shine Effect) */
         .shine-text { 
             text-transform: uppercase; letter-spacing: 2px; font-weight: 800;
             background: linear-gradient(90deg, #ffffff, #444444, #ffffff);
@@ -26,22 +27,25 @@
         .script-img { width: 100%; max-height: 250px; object-fit: cover; border-radius: 10px; margin-bottom: 20px; border: 2px solid #202225; }
         .code-box { position: relative; background: #2f3136; padding: 15px; border-radius: 8px; text-align: left; margin-bottom: 20px; border: 1px solid #40444b; overflow-x: auto; }
         pre { margin: 0; color: #a9fdac; font-family: 'Consolas', monospace; font-size: 0.9em; white-space: pre-wrap; word-wrap: break-word; }
+        
+        /* ปุ่มกด */
         .btn { background: linear-gradient(45deg, #ffffff, #999999); border: none; padding: 12px 25px; color: #000; border-radius: 25px; font-size: 1em; cursor: pointer; font-weight: bold; transition: 0.3s; width: 100%; display: block; margin-top: 10px; text-decoration: none; }
         .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 255, 255, 0.3); }
         .warning { color: #ed4245; font-size: 0.8em; margin-top: 15px; border-top: 1px solid #40444b; padding-top: 10px; }
         
-        /* ✅ Toast Notification */
+        /* ✅ ระบบแจ้งเตือนคัดลอก (Toast) */
         .toast { visibility: hidden; min-width: 200px; background-color: #3ba55c; color: #fff; text-align: center; border-radius: 5px; padding: 12px; position: fixed; z-index: 999; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 16px; font-weight: bold; }
         .toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
 
         /* 🍔 Hamburger Menu */
         .menu-btn { position: fixed; top: 20px; left: 20px; font-size: 30px; cursor: pointer; color: white; z-index: 100; transition: 0.3s; }
+        .menu-btn:hover { color: #aaa; }
         .sidenav { height: 100%; width: 0; position: fixed; z-index: 99; top: 0; left: 0; background-color: #111; overflow-x: hidden; transition: 0.5s; padding-top: 60px; box-shadow: 2px 0 10px rgba(0,0,0,0.5); }
         .sidenav a { padding: 8px 8px 8px 32px; text-decoration: none; font-size: 18px; color: #818181; display: block; transition: 0.3s; }
         .sidenav a:hover { color: #f1f1f1; }
         .sidenav .closebtn { position: absolute; top: 0; right: 25px; font-size: 36px; margin-left: 50px; }
 
-        /* 🟦 Discord Modal (Glassmorphism Overlay) */
+        /* 🟦 Discord Modal (Glassmorphism แบบโปร่งใส) */
         .modal { display: none; position: fixed; z-index: 200; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .modal-content { 
             background-color: rgba(30, 31, 36, 0.7); 
@@ -49,19 +53,21 @@
             margin: auto; padding: 25px; width: 90%; max-width: 400px; border-radius: 20px; text-align: center; position: relative; animation: zoomIn 0.3s; 
         }
         
-        /* ⬅️ Back Button */
+        /* ⬅️ ปุ่มลูกศรย้อนกลับ */
         .close-modal { 
             color: #fff; float: right; font-size: 35px; font-weight: bold; cursor: pointer; 
             padding: 5px 15px; margin-top: -15px; margin-right: -15px; transition: 0.3s;
         }
+        .close-modal:hover { color: #aaa; transform: scale(1.1); }
 
         .discord-img { width: 110px; height: 110px; border-radius: 50%; border: 3px solid #5865F2; margin-bottom: 10px; object-fit: cover; }
         
-        /* 🏃‍♂️ Running Text (Marquee) */
+        /* 🏃‍♂️ ระบบข้อความวิ่ง (Marquee) */
         .marquee-container { width: 100%; overflow: hidden; white-space: nowrap; margin: 15px 0; }
         .marquee-text { display: inline-block; padding-left: 100%; animation: marquee 10s linear infinite; color: #ccc; font-size: 0.95em; }
         @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
 
+        /* Animations */
         @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
         @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
         @keyframes zoomIn { from {transform: scale(0.8); opacity: 0;} to {transform: scale(1); opacity: 1;} }
