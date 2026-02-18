@@ -219,12 +219,20 @@ client.on('interactionCreate', async (i) => {
         const isEN = i.customId.includes('en');
         const webLink = `https://${DOMAIN}/view/${encodeURIComponent(name)}?lang=${isEN ? 'en' : 'th'}`;
         
+        // --- ✏️ จุดแก้ไข: ปรับข้อความ Embed ให้สวยและชัดเจนตามสั่ง ---
         const embed = new EmbedBuilder().setColor('#00FF00')
             .setTitle(isEN ? `🔗 Link Ready: ${name}` : `🔗 ลิ้งค์สคริปต์พร้อมแล้ว: ${name}`)
-            .setDescription(isEN ? 'Click button below to view and copy script.' : 'คลิกปุ่มด้านล่างเพื่อไปหน้าเว็บไซต์และคัดลอกสคริปต์นะคะ')
+            .setDescription(isEN 
+                ? `👇 **Click the button below to view and copy the script.**\n\n*Enjoy using Swift Hub!* 🎮` 
+                : `👇 **คลิกปุ่มด้านล่างเพื่อไปหน้าเว็บไซต์และคัดลอกสคริปต์นะคะ**\n\n*ขอให้สนุกกับการใช้งาน Swift Hub ค่ะ* 🎮`)
             .setFooter({ text: 'Swift Hub Service ❤️' });
 
-        const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setLabel(isEN ? 'Open Page' : 'เปิดหน้าสคริปต์').setStyle(ButtonStyle.Link).setURL(webLink).setEmoji('🌐'));
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setLabel(isEN ? 'Open Script Page 🌐' : 'เปิดหน้าสคริปต์ 🌐')
+                .setStyle(ButtonStyle.Link)
+                .setURL(webLink)
+        );
         await i.reply({ embeds: [embed], components: [row], ephemeral: true });
     }
 
