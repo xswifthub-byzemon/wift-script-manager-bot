@@ -17,10 +17,23 @@ const DOMAIN = rawDomain || 'wift-script-manager-bot-production.up.railway.app';
 const SCRIPT_DB_FILE = './scripts.json';
 const STATUS_DB_FILE = './status.json';
 const PANEL_DB_FILE = './panels.json'; 
+const ANNOUNCE_DB_FILE = './announcement.json'; // 📁 ไฟล์เก็บประกาศ
 const DEFAULT_IMG = 'https://cdn.discordapp.com/attachments/1449112368977281117/1473691141802299475/IMG_0939.png'; 
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 const app = express();
+
+// --- 🌐 HELPERS: TRANSLATE FUNCTION ---
+async function translateText(text, targetLang) {
+    try {
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        return data[0][0][0];
+    } catch (e) {
+        return text; // ถ้าแปลไม่ได้ ให้ใช้ข้อความเดิม
+    }
+}
 
 // --- 🌐 WEB SERVER ---
 app.get('/', (req, res) => {
@@ -51,6 +64,17 @@ app.get('/view/:key', (req, res) => {
         copiedText: isEN ? '✅ Copied!' : '✅ คัดลอกแล้ว!'
     };
 
+    // 🔥 เตรียม HTML ประกาศ 🔥
+    let announceHTML = '';
+    if (announcementData && announcementData.textTH) {
+        // เลือกข้อความตามภาษา (ถ้าไม่มีในภาษานั้นๆ ให้ใช้ภาษาไทยเป็นหลัก)
+        const showText = isEN ? (announcementData.textEN || announcementData.textTH) : announcementData.textTH;
+        announceHTML = `
+        <div class="announce-box">
+            <div class="announce-text">📢 ${showText}</div>
+        </div>`;
+    }
+
     const htmlPath = path.join(__dirname, 'index.html');
     fs.readFile(htmlPath, 'utf8', (err, html) => {
         if (err) return res.status(500).send('Error loading template');
@@ -64,7 +88,8 @@ app.get('/view/:key', (req, res) => {
             .replace('{{DISCORD_DESC}}', data.discordDesc)
             .replace('{{COPY_LINK_BTN}}', data.copyLinkBtn)
             .replace('{{COPIED_TEXT}}', data.copiedText)
-            .replace('{{VIEWS}}', scriptData.views); 
+            .replace('{{VIEWS}}', scriptData.views)
+            .replace('{{ANNOUNCE_BLOCK}}', announceHTML); // แทรกกล่องประกาศ
         res.send(finalHtml);
     });
 });
@@ -75,8 +100,9 @@ app.listen(PORT, '0.0.0.0', () => console.log(`🌐 Website online on port ${POR
 let scriptDatabase = {};
 let statusDatabase = {}; 
 let panelDatabase = {}; 
-let userSelections = new Map(); // เก็บค่าแยกกันด้วย key: userId_lang
-let userCooldowns = new Map();  // เก็บเวลาคูลดาวน์: userId -> timestamp
+let announcementData = {}; // 💾 ตัวแปรเก็บประกาศ
+let userSelections = new Map(); 
+let userCooldowns = new Map();  
 let activeEditTarget = null, tempStatusName = null; 
 
 let activeScriptPanelEN = null, activeScriptPanelTH = null, activeAdminScriptPanel = null;
@@ -86,12 +112,14 @@ function loadData() {
     if (fs.existsSync(SCRIPT_DB_FILE)) { try { scriptDatabase = JSON.parse(fs.readFileSync(SCRIPT_DB_FILE, 'utf8')); } catch (e) { scriptDatabase = {}; } }
     if (fs.existsSync(STATUS_DB_FILE)) { try { statusDatabase = JSON.parse(fs.readFileSync(STATUS_DB_FILE, 'utf8')); } catch (e) { statusDatabase = {}; } }
     if (fs.existsSync(PANEL_DB_FILE)) { try { panelDatabase = JSON.parse(fs.readFileSync(PANEL_DB_FILE, 'utf8')); } catch (e) { panelDatabase = {}; } }
+    if (fs.existsSync(ANNOUNCE_DB_FILE)) { try { announcementData = JSON.parse(fs.readFileSync(ANNOUNCE_DB_FILE, 'utf8')); } catch (e) { announcementData = {}; } }
 }
 loadData();
 
 async function saveScriptData() { fs.writeFileSync(SCRIPT_DB_FILE, JSON.stringify(scriptDatabase, null, 4)); await updateAllScriptDashboards(); }
 async function saveStatusData() { fs.writeFileSync(STATUS_DB_FILE, JSON.stringify(statusDatabase, null, 4)); await updateStatusDashboard(); }
 async function savePanelData() { fs.writeFileSync(PANEL_DB_FILE, JSON.stringify(panelDatabase, null, 4)); }
+async function saveAnnouncementData() { fs.writeFileSync(ANNOUNCE_DB_FILE, JSON.stringify(announcementData, null, 4)); }
 
 // --- 🔥 COMMANDS ---
 const commands = [
@@ -101,6 +129,8 @@ const commands = [
     new SlashCommandBuilder().setName('getscript-th').setDescription('🇹🇭 User Panel (TH)'),
     new SlashCommandBuilder().setName('status-panel').setDescription('📊 Status Dashboard'),
     new SlashCommandBuilder().setName('web-stats').setDescription('📈 View Stats (Owner Only)'),
+    new SlashCommandBuilder().setName('set-news').setDescription('📢 Create Announcement (Owner Only)'),
+    new SlashCommandBuilder().setName('del-news').setDescription('🗑️ Delete Announcement (Owner Only)'),
 ].map(command => command.toJSON());
 
 client.once('ready', async () => {
@@ -220,12 +250,10 @@ async function generateStatusPanelPayload() {
     const keys = Object.keys(statusDatabase);
     const now = new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok', hour12: true, dateStyle: 'short', timeStyle: 'short' });
     
-    // รายชื่อสคริปต์พร้อมสถานะ (แก้ไขให้แสดงคำอธิบายภาษาไทยตามสั่ง)
     let list = 'No script status available.';
     if (keys.length > 0) {
         list = keys.map(k => {
             const s = statusDatabase[k];
-            // แสดงผล: • 🟢 : ชื่อสคริปต์ -> ใช้งานได้ปกติ
             return `• ${s.emoji} : **${k}** —> ${s.descTH}`;
         }).join('\n');
     }
@@ -268,13 +296,58 @@ client.on('interactionCreate', async (i) => {
                 );
                 activeStatusAdminPanel = await i.reply({ embeds: [embed], components: [row], fetchReply: true });
             }
-        } else if (['admin', 'status-panel', 'web-stats', 'status-admin'].includes(commandName)) { return i.reply({ content: '🚫 Admin only!', ephemeral: true }); }
+            
+            // --- 📢 Announcement Commands ---
+            if (commandName === 'set-news') {
+                const m = new ModalBuilder().setCustomId('modal_set_news').setTitle('📢 ตั้งค่าประกาศหน้าเว็บ');
+                m.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_news').setLabel("ข้อความประกาศ (ไทยหรืออังกฤษ)").setStyle(TextInputStyle.Paragraph).setRequired(true)));
+                await i.showModal(m);
+            }
+            
+            if (commandName === 'del-news') {
+                if (!announcementData.textTH && !announcementData.textEN) {
+                    return i.reply({ content: '⚠️ **ยังไม่มีข้อความประกาศให้ลบนะคะ!**', ephemeral: true });
+                }
+                const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('btn_conf_del_news').setLabel('ยืนยันการลบประกาศ 🗑️').setStyle(ButtonStyle.Danger));
+                await i.reply({ content: '❓ **คุณแน่ใจหรือไม่ว่าจะลบประกาศหน้าเว็บ?**', components: [row], ephemeral: true });
+            }
+
+        } else if (['admin', 'status-panel', 'web-stats', 'status-admin', 'set-news', 'del-news'].includes(commandName)) { return i.reply({ content: '🚫 Admin only!', ephemeral: true }); }
+    }
+
+    // --- MODAL SUBMIT (Announcement) ---
+    if (i.customId === 'modal_set_news' && i.isModalSubmit()) {
+        const rawText = i.fields.getTextInputValue('inp_news');
+        await i.deferReply({ ephemeral: true });
+
+        // ตรวจสอบภาษา (ง่ายๆ) และแปล
+        let textTH = rawText;
+        let textEN = rawText;
+
+        // ถ้าพิมพ์ไทย -> แปลเป็นอังกฤษ
+        if (/[ก-๙]/.test(rawText)) {
+            textEN = await translateText(rawText, 'en');
+        } else {
+            // ถ้าพิมพ์อังกฤษ -> แปลเป็นไทย
+            textTH = await translateText(rawText, 'th');
+        }
+
+        announcementData = { textTH, textEN };
+        await saveAnnouncementData();
+        await i.editReply({ content: `✅ **ตั้งค่าประกาศเรียบร้อย!**\n🇹🇭 ไทย: ${textTH}\n🇺🇸 Eng: ${textEN}` });
+    }
+
+    // --- BUTTON (Delete Announcement) ---
+    if (i.customId === 'btn_conf_del_news') {
+        announcementData = {}; // ล้างข้อมูล
+        await saveAnnouncementData();
+        await i.update({ content: '✅ **ลบประกาศหน้าเว็บเรียบร้อยแล้วค่ะ!**', components: [] });
     }
 
     // User Select Script (แยก Panel TH/EN)
     if (i.isStringSelectMenu() && i.customId.startsWith('select_script')) {
         const lang = i.customId.includes('en') ? 'en' : 'th';
-        const storageKey = `${i.user.id}_${lang}`; // แยก Key ตามภาษา
+        const storageKey = `${i.user.id}_${lang}`; 
         const val = i.values[0];
 
         if (val === 'reset_selection') {
@@ -290,19 +363,19 @@ client.on('interactionCreate', async (i) => {
         const lang = i.customId.includes('en') ? 'en' : 'th';
         const storageKey = `${i.user.id}_${lang}`;
         const name = userSelections.get(storageKey);
-        const cooldownTime = 60 * 60 * 1000; // 1 ชั่วโมง (3600000 ms)
+        const cooldownTime = 60 * 60 * 1000; 
 
-        // 1. เช็คคูลดาวน์ (1 ชั่วโมง)
+        // 1. เช็คคูลดาวน์
         if (i.user.id !== OWNER_ID && userCooldowns.has(i.user.id)) {
             const expiration = userCooldowns.get(i.user.id) + cooldownTime;
             if (Date.now() < expiration) {
-                const timeLeft = Math.ceil((expiration - Date.now()) / 60000); // เหลืออีกกี่นาที
+                const timeLeft = Math.ceil((expiration - Date.now()) / 60000); 
                 const cdMsg = lang === 'en'
                     ? `⏳ **Cooldown! Please wait ${timeLeft} minutes.**`
                     : `⏳ **ใจเย็นๆ นะคะ! กรุณารออีก ${timeLeft} นาทีก่อนกดรับใหม่**`;
                 
                 const msg = await i.reply({ content: cdMsg, ephemeral: true });
-                setTimeout(() => { i.deleteReply().catch(()=>{}) }, 4000); // ลบใน 4 วิ
+                setTimeout(() => { i.deleteReply().catch(()=>{}) }, 4000); 
                 return;
             }
         }
@@ -314,11 +387,11 @@ client.on('interactionCreate', async (i) => {
                 : '⚠️ **กรุณาเลือกสคริปต์จากเมนูด้านบนก่อนกดปุ่มรับสคริปต์นะคะ!**';
             
             const msg = await i.reply({ content: warningMsg, ephemeral: true });
-            setTimeout(() => { i.deleteReply().catch(()=>{}) }, 5000); // ลบใน 5 วิ
+            setTimeout(() => { i.deleteReply().catch(()=>{}) }, 5000); 
             return; 
         }
         
-        // 3. ส่งลิ้งค์ (สำเร็จ)
+        // 3. ส่งลิ้งค์
         const webLink = `https://${DOMAIN}/view/${encodeURIComponent(name)}?lang=${lang}`;
         const embed = new EmbedBuilder().setColor('#00FF00')
             .setTitle(lang === 'en' ? `🔗 Link Ready: ${name}` : `🔗 ลิ้งค์สคริปต์พร้อมแล้ว: ${name}`)
@@ -328,14 +401,10 @@ client.on('interactionCreate', async (i) => {
         const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setLabel(lang === 'en' ? 'Open Script Page 🌐' : 'เปิดหน้าสคริปต์ 🌐').setStyle(ButtonStyle.Link).setURL(webLink));
         await i.reply({ embeds: [embed], components: [row], ephemeral: true });
 
-        // 4. บันทึกคูลดาวน์
         userCooldowns.set(i.user.id, Date.now());
 
-        // 5. รีเซ็ตการเลือกใน 3 วินาที (ป้องกันกดซ้ำมั่วๆ)
         setTimeout(async () => {
             userSelections.delete(storageKey);
-            // อัปเดต Panel เพื่อให้ Dropdown กลับเป็นค่าเริ่มต้น
-            // (Optional: ถ้าอยากให้ Dropdown เด้งกลับทันทีต้องใช้ i.message.edit แต่มันอาจจะกวน User อื่น ดังนั้นเราลบแค่ใน Server Memory พอ)
         }, 3000);
     }
 
@@ -397,9 +466,8 @@ client.on('interactionCreate', async (i) => {
         delete scriptDatabase[i.values[0]]; await saveScriptData(); await i.reply({ content: `🗑️ ลบ **${i.values[0]}** แล้ว!`, ephemeral: true });
     }
 
-    // --- STATUS ADMIN LOGIC (New & Improved) ---
+    // --- STATUS ADMIN LOGIC ---
     
-    // ➕ Add Status (ใช้ Dropdown แทนการพิมพ์ชื่อ)
     if (i.customId === 'btn_st_add') {
         const scriptNames = Object.keys(scriptDatabase);
         if (scriptNames.length === 0) return i.reply({ content: '❌ ยังไม่มีสคริปต์ในคลังให้เพิ่มสถานะค่ะ', ephemeral: true });
@@ -425,7 +493,6 @@ client.on('interactionCreate', async (i) => {
         await saveStatusData(); await i.update({ content: `✅ บันทึกสถานะ **${tempStatusName}** เป็น ${s.emoji} เรียบร้อย!`, components: [] });
     }
 
-    // ✏️ Edit Status (ใช้ Dropdown)
     if (i.customId === 'btn_st_edit') {
         const keys = Object.keys(statusDatabase);
         if (!keys.length) return i.reply({ content: '❌ ยังไม่มีสถานะสคริปต์ให้แก้ไข', ephemeral: true });
@@ -438,7 +505,6 @@ client.on('interactionCreate', async (i) => {
         await i.update({ content: `กำลังแก้ไขสถานะของ: **${tempStatusName}**\n👇 เลือกสถานะใหม่ด้านล่าง:`, components: [row] });
     }
 
-    // 🗑️ Delete Status
     if (i.customId === 'btn_st_delete') {
         const keys = Object.keys(statusDatabase);
         if (!keys.length) return i.reply({ content: '❌ ว่างเปล่า', ephemeral: true });
