@@ -9,6 +9,7 @@ const TOKEN = process.env.DISCORD_TOKEN;
 const OWNER_ID = process.env.OWNER_ID;
 const PORT = process.env.PORT || 3000;
 
+// Domain Handler
 let rawDomain = process.env.PUBLIC_DOMAIN || '';
 rawDomain = rawDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
 const DOMAIN = rawDomain || 'wift-script-manager-bot-production.up.railway.app'; 
@@ -24,7 +25,6 @@ app.get('/', (req, res) => {
     res.send('<h1 style="color:green; font-family:sans-serif; text-align:center; margin-top:20%;">🤖 Bot & Website is Running!</h1>');
 });
 
-// Route: ดูสคริปต์
 app.get('/view/:key', (req, res) => {
     const key = req.params.key;
     const lang = req.query.lang || 'th';
@@ -35,19 +35,17 @@ app.get('/view/:key', (req, res) => {
     const code = typeof scriptData === 'string' ? scriptData : scriptData.code;
     const img = (typeof scriptData === 'object' && scriptData.image) ? scriptData.image : DEFAULT_IMG;
 
-    // 🌍 ภาษา (Localization)
     const isEN = lang === 'en';
     const data = {
         copyBtn: isEN ? 'COPY SCRIPT' : 'คัดลอกสคริปต์',
         warning: isEN ? '⚠️ Use at your own risk. Play safe!' : '⚠️ การใช้งานมีความเสี่ยง โปรดเล่นอย่างระมัดระวัง',
         menuContact: isEN ? 'Contact Admin / Staff' : 'ติดต่อแอดมินและทีมงาน',
         discordDesc: isEN ? 'Join our community for updates and support! 🎮' : 'เข้ามาร่วมพูดคุย อัปเดตข่าวสาร และแจ้งปัญหาได้ที่นี่เลยครับ! 🎮',
-        copyLinkBtn: isEN ? 'Copy Invite Link 🔗' : 'คัดลอกลิ้งค์ดิสคอร์ด 🔗',
-        toastMsg: isEN ? '✅ Copied!' : '✅ คัดลอกแล้ว!' // ✨ เพิ่มข้อความ Toast 2 ภาษา
+        copyLinkBtn: isEN ? 'Copy Invite Link 🔗' : 'คัดลอกลิ้งค์ดิสคอร์ด 🔗'
     };
 
     const htmlPath = path.join(__dirname, 'index.html');
-    if (!fs.existsSync(htmlPath)) return res.send('Error: Missing index.html');
+    if (!fs.existsSync(htmlPath)) return res.send('Error: Missing index.html in GitHub');
 
     fs.readFile(htmlPath, 'utf8', (err, html) => {
         if (err) return res.status(500).send('Error loading template');
@@ -60,8 +58,7 @@ app.get('/view/:key', (req, res) => {
             .replace('{{WARNING_TEXT}}', data.warning)
             .replace('{{MENU_CONTACT}}', data.menuContact)
             .replace('{{DISCORD_DESC}}', data.discordDesc)
-            .replace('{{COPY_LINK_BTN}}', data.copyLinkBtn)
-            .replace('{{TOAST_MSG}}', data.toastMsg); // ✨ แทนที่ข้อความ Toast
+            .replace('{{COPY_LINK_BTN}}', data.copyLinkBtn);
 
         res.send(finalHtml);
     });
@@ -200,6 +197,7 @@ client.on('interactionCreate', async (interaction) => {
     if ((interaction.customId === 'btn_get_en' || interaction.customId === 'btn_get_th') && interaction.isButton()) {
         const name = userSelections.get(interaction.user.id);
         if (!name || !scriptDatabase[name]) return interaction.reply({ content: '⚠️ Please select a script first!', ephemeral: true });
+        
         const isEN = interaction.customId.includes('_en');
         const webLink = `https://${DOMAIN}/view/${encodeURIComponent(name)}?lang=${isEN ? 'en' : 'th'}`;
         const embed = new EmbedBuilder().setColor('#00FF00').setTitle(isEN ? `🔗 Script Ready: ${name}` : `🔗 สคริปต์พร้อมแล้ว: ${name}`).setDescription(isEN ? `Click the link below to view/copy script.` : `คลิกลิ้งค์ด้านล่างเพื่อดูและคัดลอกสคริปต์ค่ะ`).addFields({ name: isEN ? 'Web Link:' : 'ลิ้งค์หน้าเว็บ:', value: `[👉 Click Here / กดที่นี่](${webLink})` }).setFooter({ text: 'Swift Hub', iconURL: client.user.displayAvatarURL() });
