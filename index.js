@@ -159,7 +159,6 @@ client.on('interactionCreate', async (interaction) => {
         const val = interaction.values[0];
         if (val === 'reset_selection') {
             userSelections.delete(interaction.user.id);
-            // ✨ ใช้ update แทน reply เพื่อรีเฟรช Dropdown ให้กลับไปเป็น Placeholder และเอาเครื่องหมายติ๊กออก
             const payload = await generateUserPanelPayload('en');
             return interaction.update(payload);
         }
@@ -171,8 +170,17 @@ client.on('interactionCreate', async (interaction) => {
         const scriptName = userSelections.get(interaction.user.id);
         if (!scriptName || !scriptDatabase[scriptName]) return interaction.reply({ content: '⚠️ Please select a script from the dropdown first!', ephemeral: true });
         const code = scriptDatabase[scriptName];
-        // ✨ แก้ไข Format เป็นแบบ `code` บรรทัดเดียว
-        await interaction.reply({ content: `✨ **${scriptName}** is here! 👇\n\`${code}\``, ephemeral: true });
+        
+        // ✨ Create English Result Embed
+        const resultEmbed = new EmbedBuilder()
+            .setColor('#00FF00') // Green for success
+            .setTitle(`📜 Script: ${scriptName}`)
+            .setDescription(`Here is your script! Enjoy and play safe. 🎮`)
+            .addFields({ name: 'Your Code:', value: `\`${code}\`` }) // Code block
+            .setFooter({ text: 'Thank you for using Swift Hub! ❤️', iconURL: client.user.displayAvatarURL() })
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [resultEmbed], ephemeral: true });
     }
 
     // 🟢 USER INTERACTION (Thai)
@@ -180,7 +188,6 @@ client.on('interactionCreate', async (interaction) => {
         const val = interaction.values[0];
         if (val === 'reset_selection') {
             userSelections.delete(interaction.user.id);
-            // ✨ ใช้ update เพื่อรีเฟรช Dropdown กลับไปเป็นค่าเริ่มต้น
             const payload = await generateUserPanelPayload('th');
             return interaction.update(payload);
         }
@@ -192,8 +199,17 @@ client.on('interactionCreate', async (interaction) => {
         const scriptName = userSelections.get(interaction.user.id);
         if (!scriptName || !scriptDatabase[scriptName]) return interaction.reply({ content: '⚠️ กรุณาเลือกสคริปต์จากเมนูก่อนกดปุ่มนะคะ!', ephemeral: true });
         const code = scriptDatabase[scriptName];
-        // ✨ แก้ไข Format เป็นแบบ `code` บรรทัดเดียว
-        await interaction.reply({ content: `✨ **${scriptName}** มาแล้วค่ะซีม่อนจัดให้! 👇\n\`${code}\``, ephemeral: true });
+
+        // ✨ Create Thai Result Embed
+        const resultEmbed = new EmbedBuilder()
+            .setColor('#00FF00') // สีเขียวสำเร็จ
+            .setTitle(`📜 สคริปต์: ${scriptName}`)
+            .setDescription(`นี่คือสคริปต์ของคุณค่ะ! ขอให้สนุกกับการใช้งานนะคะ 🎮\n*⚠️ คำเตือน: การใช้สคริปต์มีความเสี่ยง โปรดเล่นอย่างมีสติและระมัดระวังด้วยนะคะ*`)
+            .addFields({ name: 'โค้ดของคุณ:', value: `\`${code}\`` }) // Code block
+            .setFooter({ text: 'ขอบคุณที่ไว้ใจ Swift Hub นะคะ ❤️', iconURL: client.user.displayAvatarURL() })
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [resultEmbed], ephemeral: true });
     }
 
     // 🔴 ADMIN INTERACTION
