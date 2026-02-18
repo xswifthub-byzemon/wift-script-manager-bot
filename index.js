@@ -6,15 +6,20 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
 
-// --- ⚙️ ตั้งค่าส่วนตัวของซีม่อน ---
+// --- ⚙️ ตั้งค่า (ดึงจาก Railway Variables) ---
 const TOKEN = process.env.DISCORD_TOKEN;
-const OWNER_ID = 'ไอดี_ของ_ซีม่อน_ใส่ตรงนี้'; // ⚠️ สำคัญมาก! ต้องใส่ ID ซีม่อนนะ
+const OWNER_ID = process.env.OWNER_ID; // ✨ แก้ตรงนี้ให้ดึงจาก Railway แล้วค่ะ
 const DB_FILE = './scripts.json';
 
-// โหลดข้อมูลสคริปต์
+// โหลดข้อมูลสคริปต์ (ถ้ามีไฟล์อยู่แล้ว)
 let scriptDatabase = {};
 if (fs.existsSync(DB_FILE)) {
-    scriptDatabase = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+    try {
+        scriptDatabase = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+    } catch (err) {
+        console.error("Error loading scripts:", err);
+        scriptDatabase = {};
+    }
 }
 
 function saveDatabase() {
@@ -22,7 +27,7 @@ function saveDatabase() {
 }
 
 client.once('ready', () => {
-    console.log(`น้องปายพร้อมเสิร์ฟสคริปต์แล้วค่ะ! Logged in as ${client.user.tag}`);
+    console.log(`น้องปาย Swift Script Hub พร้อมทำงานแล้วค่ะ! Logged in as ${client.user.tag}`);
 });
 
 // --- 1. คำสั่งเรียก Panel ---
@@ -31,40 +36,48 @@ client.on('messageCreate', async (message) => {
 
     // 🟢 Panel สำหรับสมาชิก (เลือกสคริปต์)
     if (message.content === '!getscript') {
-        const options = Object.keys(scriptDatabase).map(key => ({
+        // เช็คว่ามีสคริปต์ไหม
+        const scriptKeys = Object.keys(scriptDatabase);
+        
+        if (scriptKeys.length === 0) {
+            return message.reply('ตอนนี้ยังไม่มีสคริปต์ในคลังเลยค่ะซีม่อน เติมก่อนน้า~ 🥺');
+        }
+
+        const options = scriptKeys.map(key => ({
             label: key,
             value: key,
             description: 'คลิกเพื่อรับสคริปต์นี้',
             emoji: '📜'
         }));
 
-        if (options.length === 0) {
-            return message.reply('ตอนนี้ยังไม่มีสคริปต์ในคลังเลยค่ะซีม่อน เติมก่อนน้า~');
-        }
+        // Select Menu รับได้สูงสุด 25 ตัวเลือก ถ้าเกินต้องตัดออก
+        const safeOptions = options.slice(0, 25);
 
         const row = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId('select_script_user')
                 .setPlaceholder('เลือกสคริปต์ที่ต้องการเลยค่ะ...')
-                .addOptions(options)
+                .addOptions(safeOptions)
         );
 
         const embed = new EmbedBuilder()
             .setColor('#0099ff')
             .setTitle('📂 Swift Script Hub')
-            .setDescription('เลือกสคริปต์จากเมนูด้านล่าง น้องปายจะส่งโค้ดให้ทันทีค่ะ!');
+            .setDescription('เลือกสคริปต์จากเมนูด้านล่าง น้องปายจะส่งโค้ดให้ทันทีค่ะ!')
+            .setFooter({ text: 'Powered by Pai ❤️' });
 
         await message.channel.send({ embeds: [embed], components: [row] });
     }
 
     // 🔴 Panel หลังบ้าน (สำหรับซีม่อนคนเดียว)
     if (message.content === '!admin') {
+        // เช็ค ID ว่าใช่ซีม่อนไหม
         if (message.author.id !== OWNER_ID) return message.reply('อุ๊บส์! คำสั่งนี้สำหรับซีม่อนสุดหล่อคนเดียวค่ะ 🤫');
 
         const embed = new EmbedBuilder()
             .setColor('#FF0000')
             .setTitle('🔧 Admin Control Panel')
-            .setDescription('จัดการคลังสคริปต์ของซีม่อน');
+            .setDescription(`จัดการคลังสคริปต์ของซีม่อน (มีทั้งหมด ${Object.keys(scriptDatabase).length} สคริปต์)`);
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('btn_add').setLabel('เติมสคริปต์').setStyle(ButtonStyle.Success).setEmoji('➕'),
@@ -85,21 +98,30 @@ client.on('interactionCreate', async (interaction) => {
         const scriptName = interaction.values[0];
         const scriptCode = scriptDatabase[scriptName];
 
+        if (!scriptCode) {
+             return interaction.reply({ content: 'เอ๊ะ! ไม่เจอสคริปต์นี้ สงสัยโดนลบไปแล้วค่ะ', ephemeral: true });
+        }
+
         await interaction.reply({
             content: `**${scriptName}** มาแล้วค่ะ! 👇\n\`\`\`lua\n${scriptCode}\n\`\`\``,
             ephemeral: true // เห็นคนเดียว
         });
     }
 
-    // --- ส่วนของ Admin (ต้องเช็ค ID อีกรอบเพื่อความชัวร์) ---
-    if (interaction.user.id !== OWNER_ID) return;
+    // --- ส่วนของ Admin (เช็ค ID อีกรอบเพื่อความชัวร์) ---
+    // ถ้าไม่ใช่ปุ่มหรือเมนูที่เกี่ยวกับ admin ให้ข้ามไป
+    if (!['btn_add', 'btn_check', 'btn_edit', 'btn_delete', 'menu_delete', 'menu_select_edit'].includes(interaction.customId) && !interaction.isModalSubmit()) return;
+
+    if (interaction.user.id !== OWNER_ID) {
+        return interaction.reply({ content: 'หนูไม่รู้จักคุณค่ะ! ให้ซีม่อนใช้ได้คนเดียวนะ', ephemeral: true });
+    }
 
     // 1. ปุ่มเติมสคริปต์ (เปิด Modal)
     if (interaction.isButton() && interaction.customId === 'btn_add') {
         const modal = new ModalBuilder().setCustomId('modal_add').setTitle('เพิ่มสคริปต์ใหม่');
         
-        const nameInput = new TextInputBuilder().setCustomId('inp_name').setLabel("ชื่อสคริปต์").setStyle(TextInputStyle.Short);
-        const codeInput = new TextInputBuilder().setCustomId('inp_code').setLabel("โค้ดสคริปต์").setStyle(TextInputStyle.Paragraph);
+        const nameInput = new TextInputBuilder().setCustomId('inp_name').setLabel("ชื่อสคริปต์").setStyle(TextInputStyle.Short).setRequired(true);
+        const codeInput = new TextInputBuilder().setCustomId('inp_code').setLabel("โค้ดสคริปต์").setStyle(TextInputStyle.Paragraph).setRequired(true);
 
         modal.addComponents(new ActionRowBuilder().addComponents(nameInput), new ActionRowBuilder().addComponents(codeInput));
         await interaction.showModal(modal);
@@ -107,13 +129,20 @@ client.on('interactionCreate', async (interaction) => {
 
     // 2. ปุ่มเช็คสคริปต์
     if (interaction.isButton() && interaction.customId === 'btn_check') {
-        const scriptList = Object.keys(scriptDatabase).join('\n- ') || 'ไม่มีสคริปต์เลยค่ะ';
-        await interaction.reply({ content: `**รายการสคริปต์ทั้งหมด:**\n- ${scriptList}`, ephemeral: true });
+        const keys = Object.keys(scriptDatabase);
+        const scriptList = keys.length > 0 ? keys.map((k, i) => `${i+1}. ${k}`).join('\n') : 'ว่างเปล่า... ยังไม่มีสคริปต์เลยค่ะ';
+        
+        // ถ้าข้อความยาวเกิน Discord limit (2000 ตัวอักษร) อาจจะต้องส่งเป็นไฟล์ แต่นี่เอาเบื้องต้นก่อน
+        if (scriptList.length > 2000) {
+             await interaction.reply({ content: `เยอะจัด! มีทั้งหมด ${keys.length} สคริปต์ค่ะ (แสดงไม่หมด)`, ephemeral: true });
+        } else {
+             await interaction.reply({ content: `**รายการสคริปต์ในคลัง (${keys.length}):**\n\`\`\`\n${scriptList}\n\`\`\``, ephemeral: true });
+        }
     }
 
     // 3. ปุ่มลบสคริปต์ (แสดงเมนูเลือก)
     if (interaction.isButton() && interaction.customId === 'btn_delete') {
-        const options = Object.keys(scriptDatabase).map(k => ({ label: k, value: k }));
+        const options = Object.keys(scriptDatabase).map(k => ({ label: k, value: k })).slice(0, 25);
         if (options.length === 0) return interaction.reply({ content: 'ไม่มีอะไรให้ลบเลยค่ะ', ephemeral: true });
 
         const row = new ActionRowBuilder().addComponents(
@@ -124,7 +153,7 @@ client.on('interactionCreate', async (interaction) => {
 
     // 4. ปุ่มแก้ไขสคริปต์ (แสดงเมนูเลือก)
     if (interaction.isButton() && interaction.customId === 'btn_edit') {
-        const options = Object.keys(scriptDatabase).map(k => ({ label: k, value: k }));
+        const options = Object.keys(scriptDatabase).map(k => ({ label: k, value: k })).slice(0, 25);
         if (options.length === 0) return interaction.reply({ content: 'ไม่มีอะไรให้แก้เลยค่ะ', ephemeral: true });
 
         const row = new ActionRowBuilder().addComponents(
@@ -156,12 +185,10 @@ client.on('interactionCreate', async (interaction) => {
     // รับค่าจาก Menu เลือกตัวแก้ -> เด้ง Modal แก้ไข
     if (interaction.isStringSelectMenu() && interaction.customId === 'menu_select_edit') {
         const name = interaction.values[0];
-        const oldCode = scriptDatabase[name];
+        // เก็บชื่อไว้ชั่วคราวใน client (วิธีนี้ง่ายสุดสำหรับบอทส่วนตัว)
+        client.tempEditTarget = name;
 
-        const modal = new ModalBuilder().setCustomId('modal_edit_save').setTitle(`แก้ไข: ${name}`);
-        // ส่งชื่อเดิมไปด้วยผ่าน CustomId หรือเก็บไว้ แต่ในที่นี้เราแก้โค้ดอย่างเดียว
-        // หมายเหตุ: Discord Modal ไม่ให้ส่งค่า Default เกิน 4000 ตัวอักษร ถ้าโค้ดยาวมากอาจจะใส่ใน value ไม่ได้
-        // ปายจะทำแบบช่องว่างให้วางโค้ดใหม่ทับไปเลยนะเพื่อกัน Error
+        const modal = new ModalBuilder().setCustomId('modal_edit_save').setTitle(`แก้ไข: ${name.substring(0, 30)}`); // Title ยาวเกินไม่ได้
         
         const codeInput = new TextInputBuilder()
             .setCustomId('inp_new_code')
@@ -169,13 +196,6 @@ client.on('interactionCreate', async (interaction) => {
             .setStyle(TextInputStyle.Paragraph)
             .setPlaceholder("วางโค้ดใหม่ทับอันเดิมได้เลยค่ะ")
             .setRequired(true);
-
-        // แอบส่งชื่อสคริปต์ผ่าน ID ของ Input ไม่ได้ ต้องใช้วิธีอื่น
-        // แต่ง่ายสุดคือ ปายจะขอให้ซีม่อนยืนยันชื่อใน Modal Title แล้วเราใช้ตัวแปร global หรือ cache ชั่วคราว
-        // เพื่อความง่าย ปายจะใช้วิธีแยก CustomID ให้มีชื่อสคริปต์ติดไปด้วย (แต่ต้องระวังชื่อยาวเกิน)
-        // **วิธีแก้ปัญหาที่ง่ายที่สุด:** ปายให้ซีม่อนวางโค้ดใหม่ แล้วปายจะอัพเดตตัวที่เลือกไว้ล่าสุด (วิธีนี้ซับซ้อนน้อยสุดสำหรับโค้ดไฟล์เดียว)
-        
-        client.tempEditTarget = name; // ⚠️ วิธีนี้ใช้ได้กรณีรันคนเดียว ถ้าหลายคนใช้พร้อมกันอาจรวน แต่ซีม่อนใช้คนเดียว สบายมาก!
 
         modal.addComponents(new ActionRowBuilder().addComponents(codeInput));
         await interaction.showModal(modal);
@@ -186,13 +206,13 @@ client.on('interactionCreate', async (interaction) => {
         const newCode = interaction.fields.getTextInputValue('inp_new_code');
         const targetName = client.tempEditTarget;
 
-        if (targetName && scriptDatabase[targetName]) {
+        if (targetName && scriptDatabase[targetName] !== undefined) {
             scriptDatabase[targetName] = newCode;
             saveDatabase();
             await interaction.reply({ content: `✨ อัพเดตโค้ดของ **${targetName}** เรียบร้อยค่ะ!`, ephemeral: true });
             client.tempEditTarget = null;
         } else {
-            await interaction.reply({ content: `❌ เกิดข้อผิดพลาด หาชื่อสคริปต์ไม่เจอค่ะ ลองใหม่น้า`, ephemeral: true });
+            await interaction.reply({ content: `❌ เกิดข้อผิดพลาด! ลองกดแก้ไขใหม่นะคะ`, ephemeral: true });
         }
     }
 });
