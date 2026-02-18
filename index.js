@@ -52,7 +52,7 @@ client.once('ready', async () => {
     }
 });
 
-// --- 🎨 Helper: สร้าง User Panel (แก้ไขใหม่ไฉไลกว่าเดิม ✨) ---
+// --- 🎨 Helper: สร้าง User Panel ---
 async function generateUserPanelPayload(lang) {
     const scriptKeys = Object.keys(scriptDatabase);
     const hasScripts = scriptKeys.length > 0;
@@ -63,11 +63,14 @@ async function generateUserPanelPayload(lang) {
     
     let description = '';
     if (hasScripts) {
-        // ✨ จัดรูปแบบรายการตามที่ขอ: Script 1 : Name
+        // ✨ รายการสคริปต์ (แสดงชื่อ แต่ใส่ Block เพื่อความสวยงาม)
         const list = scriptKeys.map((k, i) => isEN 
-            ? `\` Script ${i + 1} : ${k} \`` 
-            : `\` สคริปต์ ${i + 1} : ${k} \``
+            ? `Script ${i + 1} : ${k}` 
+            : `สคริปต์ ${i + 1} : ${k}`
         ).join('\n');
+
+        // ใส่ใน Code Block ใหญ่ๆ เพื่อให้อ่านง่ายแต่ก๊อปยากขึ้นนิดนึง (สำหรับบางคน)
+        const formattedList = `\`\`\`text\n${list}\n\`\`\``;
 
         if (isEN) {
             description = `
@@ -77,7 +80,7 @@ We provide high-quality scripts just for you.
 ⚠️ **Warning:** Using scripts involves risk. Please play responsibly and safely.
 ----------------------------------------------------
 **📜 Available Scripts (${scriptKeys.length}):**
-${list}
+${formattedList}
 
 *Select a script from the dropdown below and click "Get Script".*
 `;
@@ -89,7 +92,7 @@ ${list}
 ⚠️ **คำเตือน:** การใช้สคริปต์มีความเสี่ยง โปรดเล่นอย่างมีสติและระมัดระวังด้วยนะคะ
 ----------------------------------------------------
 **📜 สคริปต์ที่พร้อมใช้งาน (${scriptKeys.length}):**
-${list}
+${formattedList}
 
 *เลือกสคริปต์จากเมนูด้านล่าง แล้วกดปุ่ม "รับสคริปต์" นะคะ*
 `;
@@ -198,12 +201,11 @@ client.on('interactionCreate', async (interaction) => {
         if (!scriptName || !scriptDatabase[scriptName]) return interaction.reply({ content: '⚠️ Please select a script from the dropdown first!', ephemeral: true });
         const code = scriptDatabase[scriptName];
         
-        // ✨ Embed ผลลัพธ์ภาษาอังกฤษ (แก้ไขตามสั่ง)
         const resultEmbed = new EmbedBuilder()
             .setColor('#00FF00') 
-            .setTitle(`📜 Script Map : ${scriptName}`) // แก้เป็น Script Map
+            .setTitle(`📜 Script Map : ${scriptName}`) // ✨ แก้ตามสั่ง
             .setDescription(`Here is your script! Enjoy and play safe. 🎮`)
-            .addFields({ name: 'Code Script:', value: `\`${code}\`` }) // แก้เป็น Code Script
+            .addFields({ name: 'Code Script:', value: `\`${code}\`` }) // ✨ แก้ตามสั่ง
             .setFooter({ text: 'Thank you for using Swift Hub! ❤️', iconURL: client.user.displayAvatarURL() })
             .setTimestamp();
 
@@ -227,12 +229,11 @@ client.on('interactionCreate', async (interaction) => {
         if (!scriptName || !scriptDatabase[scriptName]) return interaction.reply({ content: '⚠️ กรุณาเลือกสคริปต์จากเมนูก่อนกดปุ่มนะคะ!', ephemeral: true });
         const code = scriptDatabase[scriptName];
 
-        // ✨ Embed ผลลัพธ์ภาษาไทย (แก้ไขตามสั่ง)
         const resultEmbed = new EmbedBuilder()
             .setColor('#00FF00') 
-            .setTitle(`📜 สคริปต์แมพ : ${scriptName}`) // แก้เป็น สคริปต์แมพ
+            .setTitle(`📜 สคริปต์แมพ : ${scriptName}`) // ✨ แก้ตามสั่ง
             .setDescription(`นี่คือสคริปต์ของคุณค่ะ! ขอให้สนุกกับการใช้งานนะคะ 🎮\n*⚠️ คำเตือน: การใช้สคริปต์มีความเสี่ยง โปรดเล่นอย่างมีสติและระมัดระวังด้วยนะคะ*`)
-            .addFields({ name: 'โค้ดสคริปต์:', value: `\`${code}\`` }) // แก้เป็น โค้ดสคริปต์
+            .addFields({ name: 'โค้ดสคริปต์:', value: `\`${code}\`` }) // ✨ แก้ตามสั่ง
             .setFooter({ text: 'ขอบคุณที่ไว้ใจ Swift Hub นะคะ ❤️', iconURL: client.user.displayAvatarURL() })
             .setTimestamp();
 
