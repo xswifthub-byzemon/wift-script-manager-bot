@@ -3,58 +3,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Swift Script Hub</title>
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <title>Swift Hub Script</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;900&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #0f0f13; color: #fff; font-family: 'Kanit', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; overflow-x: hidden; }
+        /* --- 🌑 พื้นฐานหน้าเว็บ --- */
+        body { 
+            background-color: #0f0f13; 
+            color: #fff; 
+            font-family: 'Kanit', sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            padding: 20px; 
+            overflow-x: hidden; 
+        }
         
+        /* --- ✨ เอฟเฟกต์สีวิ่ง (Updated!) --- */
         .shine-text { 
-            text-transform: uppercase; letter-spacing: 2px; font-weight: 800;
-            background: linear-gradient(90deg, #ffffff, #444444, #ffffff);
+            text-transform: uppercase; 
+            letter-spacing: 3px; 
+            font-weight: 900; /* หนาสุดๆ เพื่อให้เห็นสีชัด */
+            
+            /* 🔥 สีวิ่ง: ขาว -> ดำสนิท -> ขาว */
+            background: linear-gradient(90deg, #ffffff, #000000, #ffffff);
             background-size: 200% auto;
-            color: transparent; -webkit-background-clip: text; background-clip: text;
+            
+            color: transparent; 
+            -webkit-background-clip: text; 
+            background-clip: text;
+            
             animation: shine 3s linear infinite;
+            
+            /* 🔥 ขอบสีขาว: ทำให้ตอนเป็นสีดำ จะกลายเป็นตัวหนังสือแบบ Outline (ขอบขาว ไส้ดำ) */
+            -webkit-text-stroke: 1.5px #ffffff; 
+            
+            /* เงาเล็กน้อย */
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
         }
         @keyframes shine { to { background-position: 200% center; } }
 
-        .container { background: #1e1f24; padding: 30px; border-radius: 15px; box-shadow: 0 0 20px rgba(255, 255, 255, 0.1); max-width: 600px; width: 100%; text-align: center; border: 1px solid #2f3136; position: relative; z-index: 1; }
-        .subtitle { color: #b9bbbe; font-size: 0.9em; margin-bottom: 20px; }
-        .script-img { width: 100%; max-height: 250px; object-fit: cover; border-radius: 10px; margin-bottom: 20px; border: 2px solid #202225; }
-        .code-box { background: #2f3136; padding: 15px; border-radius: 8px; text-align: left; margin-bottom: 20px; border: 1px solid #40444b; overflow-x: auto; }
-        pre { margin: 0; color: #a9fdac; font-family: 'Consolas', monospace; font-size: 0.9em; white-space: pre-wrap; word-wrap: break-word; }
-        .btn { background: linear-gradient(45deg, #ffffff, #999999); border: none; padding: 12px 25px; color: #000; border-radius: 25px; font-size: 1em; cursor: pointer; font-weight: bold; transition: 0.3s; width: 100%; display: block; margin-top: 10px; text-decoration: none; }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 255, 255, 0.3); }
-        .warning { color: #ed4245; font-size: 0.8em; margin-top: 15px; border-top: 1px solid #40444b; padding-top: 10px; }
-        .toast { visibility: hidden; min-width: 200px; background-color: #3ba55c; color: #fff; text-align: center; border-radius: 5px; padding: 12px; position: fixed; z-index: 999; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 16px; font-weight: bold; }
-        .toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+        /* --- 📦 กล่องคอนเทนต์ --- */
+        .container { 
+            background: rgba(30, 31, 36, 0.6); 
+            backdrop-filter: blur(10px);
+            padding: 35px; 
+            border-radius: 25px; 
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); 
+            max-width: 550px; 
+            width: 100%; 
+            text-align: center; 
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            position: relative; 
+            z-index: 1; 
+            transition: transform 0.3s;
+        }
+        .container:hover { transform: translateY(-5px); }
 
-        /* 👁️ View Counter Style */
-        .view-count {
-            color: #888; font-size: 0.85em; margin-top: 5px; margin-bottom: 15px;
-            display: flex; align-items: center; justify-content: center; gap: 5px;
+        .subtitle { color: #888; font-size: 0.85em; margin-bottom: 25px; letter-spacing: 1px; }
+
+        .script-img { 
+            width: 100%; 
+            height: auto; 
+            aspect-ratio: 16/9; 
+            object-fit: cover; 
+            border-radius: 15px; 
+            margin-bottom: 20px; 
+            border: 2px solid rgba(255, 255, 255, 0.1); 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
 
-        /* Menu & Modal Styles */
-        .menu-btn { position: fixed; top: 20px; left: 20px; font-size: 30px; cursor: pointer; color: white; z-index: 100; }
-        .sidenav { height: 100%; width: 0; position: fixed; z-index: 99; top: 0; left: 0; background-color: #111; overflow-x: hidden; transition: 0.5s; padding-top: 60px; box-shadow: 2px 0 10px rgba(0,0,0,0.5); }
-        .sidenav a { padding: 8px 8px 8px 32px; text-decoration: none; font-size: 18px; color: #818181; display: block; transition: 0.3s; }
-        .sidenav a:hover { color: #f1f1f1; }
-        .sidenav .closebtn { position: absolute; top: 0; right: 25px; font-size: 36px; }
+        .code-box { 
+            background: #18191c; 
+            padding: 15px; 
+            border-radius: 12px; 
+            text-align: left; 
+            margin-bottom: 20px; 
+            border: 1px solid #2f3136; 
+            overflow-x: auto; 
+        }
+        pre { margin: 0; color: #a9fdac; font-family: 'Consolas', monospace; font-size: 0.9em; white-space: pre-wrap; word-wrap: break-word; }
 
-        .modal { display: none; position: fixed; z-index: 200; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); align-items: center; justify-content: center; backdrop-filter: blur(5px); }
-        .modal-content { background-color: rgba(30, 31, 36, 0.7); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); padding: 25px; width: 90%; max-width: 400px; border-radius: 20px; text-align: center; position: relative; animation: zoomIn 0.3s; }
-        .close-modal { color: #fff; float: right; font-size: 35px; font-weight: bold; cursor: pointer; padding: 5px 15px; margin-top: -15px; margin-right: -15px; }
-        .discord-img { width: 110px; height: 110px; border-radius: 50%; border: 3px solid #5865F2; margin-bottom: 10px; object-fit: cover; }
+        .btn { 
+            background: linear-gradient(135deg, #ffffff, #b3b3b3); 
+            border: none; 
+            padding: 14px 25px; 
+            color: #000; 
+            border-radius: 50px; 
+            font-size: 1.1em; 
+            cursor: pointer; 
+            font-weight: 800; 
+            transition: 0.3s; 
+            width: 100%; 
+            display: block; 
+            margin-top: 10px; 
+            text-decoration: none; 
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.15);
+        }
+        .btn:hover { transform: scale(1.02); box-shadow: 0 6px 20px rgba(255, 255, 255, 0.25); }
+
+        .warning { color: #ed4245; font-size: 0.75em; margin-top: 20px; opacity: 0.8; }
+
+        .view-count {
+            color: #aaa; font-size: 0.9em; margin-top: 5px; margin-bottom: 15px;
+            display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 300;
+        }
+        .view-icon { width: 22px; height: auto; filter: brightness(0) invert(1); opacity: 0.8; }
+
+        /* --- 🍔 Menu --- */
+        .menu-btn { position: fixed; top: 25px; left: 25px; font-size: 32px; cursor: pointer; color: white; z-index: 100; transition: 0.3s; }
+        .menu-btn:hover { opacity: 0.7; transform: scale(1.1); }
+
+        .sidenav { height: 100%; width: 0; position: fixed; z-index: 99; top: 0; left: 0; background-color: #0a0a0a; overflow-x: hidden; transition: 0.5s; padding-top: 80px; box-shadow: 5px 0 20px rgba(0,0,0,0.8); }
+        .sidenav a { padding: 10px 20px 10px 32px; text-decoration: none; font-size: 20px; color: #888; display: block; transition: 0.3s; }
+        .sidenav a:hover { color: #fff; padding-left: 40px; }
+        .sidenav .closebtn { position: absolute; top: 0; right: 25px; font-size: 40px; margin-left: 50px; }
+
+        /* --- 🟦 Discord Modal (โปร่งใส + เบลอหลัง) --- */
+        .modal { 
+            display: none; 
+            position: fixed; 
+            z-index: 200; 
+            left: 0; top: 0; 
+            width: 100%; height: 100%; 
+            overflow: auto; 
+            background-color: rgba(0,0,0,0.6); 
+            align-items: center; 
+            justify-content: center; 
+            backdrop-filter: blur(5px); 
+        }
+        .modal-content { 
+            background-color: rgba(20, 20, 23, 0.85); /* ✅ โปร่งแสงมองทะลุเห็นข้างหลัง */
+            backdrop-filter: blur(20px); 
+            border: 1px solid rgba(255,255,255,0.15); 
+            padding: 40px; 
+            width: 85%; 
+            max-width: 420px; 
+            border-radius: 30px; 
+            text-align: center; 
+            position: relative; 
+            animation: zoomIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+        }
         
-        .marquee-container { width: 100%; overflow: hidden; white-space: nowrap; margin: 15px 0; }
-        .marquee-text { display: inline-block; padding-left: 100%; animation: marquee 10s linear infinite; color: #ccc; font-size: 0.95em; }
+        .close-modal { 
+            color: #fff; float: right; font-size: 30px; font-weight: bold; cursor: pointer; 
+            position: absolute; top: 20px; right: 25px; transition: 0.3s;
+        }
+        .close-modal:hover { transform: scale(1.2); color: #ed4245; }
+
+        .discord-img { width: 120px; height: 120px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.1); margin-bottom: 15px; object-fit: cover; box-shadow: 0 0 20px rgba(88, 101, 242, 0.4); }
+        
+        .marquee-container { width: 100%; overflow: hidden; white-space: nowrap; margin: 20px 0; background: rgba(0,0,0,0.3); padding: 5px 0; border-radius: 5px; }
+        .marquee-text { display: inline-block; padding-left: 100%; animation: marquee 12s linear infinite; color: #ccc; font-size: 0.95em; }
         @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
+
+        .toast { visibility: hidden; min-width: 200px; background-color: #3ba55c; color: #fff; text-align: center; border-radius: 50px; padding: 15px 25px; position: fixed; z-index: 999; left: 50%; bottom: 40px; transform: translateX(-50%); font-size: 16px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+
         @keyframes zoomIn { from {transform: scale(0.8); opacity: 0;} to {transform: scale(1); opacity: 1;} }
-        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
-        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 40px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 40px; opacity: 1;} to {bottom: 0; opacity: 0;} }
     </style>
 </head>
 <body>
+
     <div class="menu-btn" onclick="openNav()">☰</div>
     <div id="mySidenav" class="sidenav">
         <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
@@ -62,16 +177,22 @@
     </div>
 
     <div class="container">
-        <h1 class="shine-text" style="font-size: 2.5em;">Swift Script Hub</h1>
+        <h1 class="shine-text" style="font-size: 2.2em; margin-bottom: 5px;">Swift Hub Script</h1>
         <div class="subtitle">By Zemon Źx For Pai Èx</div>
         
-        <img src="{{IMAGE_URL}}" alt="Preview" class="script-img">
+        <img src="{{IMAGE_URL}}" alt="Script Preview" class="script-img">
         
-        <div style="text-align: left; font-weight: bold; font-size: 1.1em;">📜 {{SCRIPT_NAME}}</div>
+        <div style="text-align: left; font-weight: 700; font-size: 1.3em; margin-bottom: 5px; color: #fff;">📜 {{SCRIPT_NAME}}</div>
         
-        <div class="view-count">👁️ {{VIEWS}} Views</div>
+        <div class="view-count">
+            <img src="https://cdn.discordapp.com/attachments/1449112368977281117/1473759734271054087/eye_check_outline_icon_139629.png?ex=69976135&is=69960fb5&hm=82a49cf9ac9e42a9428568cb862d334b75eccc89f155963381f1d3311b8e9052&" class="view-icon" alt="views">
+            <span>{{VIEWS}} Views</span>
+        </div>
         
-        <div class="code-box"><pre id="scriptCode">{{SCRIPT_CODE}}</pre></div>
+        <div class="code-box">
+            <pre id="scriptCode">{{SCRIPT_CODE}}</pre>
+        </div>
+
         <button class="btn" onclick="copyCode()">{{COPY_BTN}}</button>
         <div class="warning">{{WARNING_TEXT}}</div>
     </div>
@@ -79,22 +200,48 @@
     <div id="discordModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeDiscordModal()">⬅️</span>
+            
             <img src="https://cdn.discordapp.com/attachments/1449112368977281117/1473691141802299475/IMG_0939.png?ex=69972154&is=6995cfd4&hm=679c5437c7c0c66ab27b46309f331225abe0b0ec561993fc6ab58fc17144f34f&" class="discord-img">
-            <h2 class="shine-text" style="font-size: 1.5em; margin: 5px 0;">Swift Hub Community 🚀</h2>
-            <div class="marquee-container"><div class="marquee-text">{{DISCORD_DESC}}</div></div>
-            <div style="background: rgba(0,0,0,0.4); padding: 10px; border-radius: 8px; margin: 10px 0; color: #a9fdac; font-family: monospace; border: 1px solid rgba(255,255,255,0.05);">discord.gg/swift-hub-community</div>
+            
+            <h2 class="shine-text" style="font-size: 1.6em; margin: 10px 0;">Swift Hub Community 🚀</h2>
+            
+            <div class="marquee-container">
+                <div class="marquee-text">{{DISCORD_DESC}}</div>
+            </div>
+
+            <div style="background: rgba(0,0,0,0.5); padding: 12px; border-radius: 10px; margin: 15px 0; color: #a9fdac; font-family: monospace; border: 1px solid rgba(255,255,255,0.1);">
+                discord.gg/swift-hub-community
+            </div>
+            
             <button class="btn" onclick="copyDiscord()">{{COPY_LINK_BTN}}</button>
         </div>
     </div>
+
     <div id="toast" class="toast">{{COPIED_TEXT}}</div>
 
     <script>
-        function showToast() { var x = document.getElementById("toast"); x.className = "toast show"; setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000); }
-        function copyCode() { navigator.clipboard.writeText(document.getElementById("scriptCode").innerText).then(() => showToast()); }
-        function copyDiscord() { navigator.clipboard.writeText("https://discord.gg/swift-hub-community").then(() => showToast()); }
-        function openNav() { document.getElementById("mySidenav").style.width = "250px"; }
+        function copyCode() {
+            var codeText = document.getElementById("scriptCode").innerText;
+            navigator.clipboard.writeText(codeText).then(() => showToast());
+        }
+
+        function copyDiscord() {
+            navigator.clipboard.writeText("https://discord.gg/swift-hub-community").then(() => showToast());
+        }
+
+        function showToast() {
+            var x = document.getElementById("toast");
+            x.className = "toast show";
+            setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
+        }
+
+        function openNav() { document.getElementById("mySidenav").style.width = "280px"; }
         function closeNav() { document.getElementById("mySidenav").style.width = "0"; }
-        function openDiscordModal() { closeNav(); document.getElementById("discordModal").style.display = "flex"; }
+        
+        function openDiscordModal() { 
+            closeNav();
+            document.getElementById("discordModal").style.display = "flex"; 
+        }
         function closeDiscordModal() { document.getElementById("discordModal").style.display = "none"; }
     </script>
 </body>
