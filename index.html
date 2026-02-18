@@ -225,7 +225,7 @@
         
         {{ANNOUNCE_BLOCK}}
         
-        <div class="script-name-glitch" style="text-align: center; font-weight: 700; font-size: 1.3em; margin-bottom: 5px; color: #fff;">📜 {{SCRIPT_NAME}}</div>
+        <div class="script-name-glitch" style="text-align: center; font-weight: 700; font-size: 1.3em; margin-bottom: 5px; color: #fff;">{{SCRIPT_NAME}}</div>
         
         <div class="view-count">
             <img src="https://cdn.discordapp.com/attachments/1449112368977281117/1473759734271054087/eye_check_outline_icon_139629.png?ex=69976135&is=69960fb5&hm=82a49cf9ac9e42a9428568cb862d334b75eccc89f155963381f1d3311b8e9052&" class="view-icon" alt="views">
@@ -314,11 +314,10 @@
                 setInterval(startShuffle, 3000); 
             });
 
-            // 2. 🔥🔥🔥 ระบบ Glitch Script Name (ชื่อสคริปต์) - แบบใหม่ 3วิ/2วิ 🔥🔥🔥
+            // 2. ระบบ Glitch Script Name (ชื่อสคริปต์) - แบบเดิม
             const scriptNameEl = document.querySelector('.script-name-glitch');
             if (scriptNameEl) {
                 const originalScriptText = scriptNameEl.innerText;
-                // หาตัวอักษรที่จะสลับ (เก็บต้นฉบับไว้)
                 const scriptChars = originalScriptText.split('');
                 
                 const runScriptGlitch = () => {
@@ -332,12 +331,10 @@
                         const timePassed = Date.now() - startTime;
                         
                         if (timePassed >= glitchDuration) {
-                            // หมดเวลา 3 วิ -> หยุดสลับ -> คืนค่าเดิม -> รอ 2 วิ แล้วเริ่มใหม่
                             clearInterval(interval);
                             scriptNameEl.innerText = originalScriptText;
                             setTimeout(runScriptGlitch, normalDuration);
                         } else {
-                            // ช่วงเวลา 3 วิ -> สลับตัวอักษร
                             const shuffled = [...scriptChars];
                             for (let i = shuffled.length - 1; i > 0; i--) {
                                 const j = Math.floor(Math.random() * (i + 1));
@@ -348,7 +345,6 @@
                     }, speed);
                 };
 
-                // เริ่มทำงานทันที
                 runScriptGlitch();
             }
         });
