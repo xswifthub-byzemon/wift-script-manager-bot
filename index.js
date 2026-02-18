@@ -250,11 +250,13 @@ async function generateStatusPanelPayload() {
     const keys = Object.keys(statusDatabase);
     const now = new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok', hour12: true, dateStyle: 'short', timeStyle: 'short' });
     
+    // รายชื่อสคริปต์พร้อมสถานะ (แก้ไขให้แสดง 2 ภาษาตามสั่ง!)
     let list = 'No script status available.';
     if (keys.length > 0) {
         list = keys.map(k => {
             const s = statusDatabase[k];
-            return `• ${s.emoji} : **${k}** —> ${s.descTH}`;
+            // 🔥 ปรับแก้ตรงนี้ให้แสดงทั้ง EN และ TH
+            return `• ${s.emoji} : **${k}** —> ${s.descEN} - ${s.descTH}`;
         }).join('\n');
     }
 
